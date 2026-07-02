@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 智学多智能体 · 个性化学习系统
 
-## Getting Started
+> 第十五届中国软件杯 **A3** 赛题：**基于大模型的个性化资源生成与学习多智能体系统开发**（出题企业：科大讯飞）
 
-First, run the development server:
+一个基于大模型与**多智能体协同框架**的个性化学习系统。学生通过自然语言对话，系统自动构建 6 维度学习画像、规划学习路径，并基于课程知识库（**数据结构与算法**）生成讲解文档，全程流式呈现并带防幻觉引用。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> 架构参考 [THU-MAIC/OpenMAIC](https://github.com/THU-MAIC/OpenMAIC) (MIT)，技术栈简化为 **Next.js 全栈单语言**（去掉了原指南的 Python 后端）。
+
+---
+
+## 最小闭环已实现（本次交付）
+
+```
+用户对话 → 画像构建Agent → 路径规划Agent → 文档生成Agent → 流式展示
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| 赛题功能 | 状态 | 实现位置 |
+| --- | --- | --- |
+| ① 对话式学习画像构建（≥6 维度） | ✅ | `lib/agents/profile-agent.ts` |
+| ② 多智能体协同资源生成（讲解文档） | ✅ 部分（1/5 类资源） | `lib/agents/doc-agent.ts` |
+| ③ 个性化学习路径规划与推送 | ✅ | `lib/agents/planner-agent.ts` |
+| ④ 智能辅导（加分项） | ⏳ 待扩展 | — |
+| ⑤ 学习效果评估（加分项） | ⏳ 待扩展 | — |
+| 防幻觉 + 内容安全 | ✅ 第 1/2/4 层 | `lib/knowledge/retriever.ts`、Prompt 约束、引用标注 |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 技术栈
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Next.js 16**（App Router + Turbopack）+ **React 19** + **TypeScript 5** —— 全栈单语言
+- **LangGraph.js**（`@langchain/langgraph`）—— **多智能体协同框架**（StateGraph 编排）
+- **科大讯飞星火**大模型 —— OpenAI 兼容端点 `https://spark-api-open.xf-yun.com/v1`
+- **最小 RAG**：关键词重叠检索（零依赖、免密钥即可运行；后续可换 Chroma + BGE-M3）
+- **Tailwind CSS v4** + **ECharts**（画像雷达）+ **react-markdown**（文档渲染）+ **Zustand**（前端状态）
+- **SSE 流式**：基于 Web `ReadableStream`，前后端自定义事件协议
 
-## Learn More
+## 快速开始
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+cp .env.example .env   # 暂不填密钥也能跑（mock 模式）
+npm run dev            # http://localhost:3000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 接入讯飞星火（真实大模型）
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. 访问 https://www.xfyun.cn/ 注册并创建"星火大模型"应用，获取 **APIKey**。
+2. 填入 `.env` 的 `SPARK_API_KEY`，系统自动从 mock 切换为真实调用。
+3. 可在 `MODEL_ROUTES` 中为不同阶段配置不同模型（画像用 `lite`，生成用 `4.0Ultra`）。
 
-## Deploy on Vercel
+## 多智能体协同框架
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`lib/graph.ts` 用 **LangGraph StateGraph** 编排三个角色智能体，共享状态在节点间流转：
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+START → profile_builder（画像构建Agent）
+      → path_planner（路径规划Agent）
+      → doc_generator（文档生成Agent，流式） → END
+```
+
+- 文档生成节点通过注入的 `writer` 回调把生成内容**逐 token 流式推送**到 SSE 通道。
+- 该框架可直接扩展为 6 个资源 Agent 并行（见下方路线图）。
+
+## 防幻觉机制（4 层，赛题非功能性要求）
+
+1. **检索约束**：所有生成前先检索知识库，作为 Prompt 上下文（`lib/knowledge/retriever.ts`）。
+2. **Prompt 约束**：System Prompt 强制"仅基于知识库内容生成，不得编造"。
+3. **事实核查**：（待扩展）生成后交叉验证。
+4. **引用标注**：文档标注来源（`sources`），便于评审验证。
+
+## 目录结构
+
+```
+app/
+  api/learn/route.ts        SSE 流式闭环接口（画像→路径→文档）
+  page.tsx                  首页：对话入口
+  profile/page.tsx          画像雷达 + 6 维度详情
+  learn/page.tsx            学习路径时间线 + 讲解文档
+components/
+  chat/ChatPanel.tsx        对话面板（驱动闭环、解析 SSE）
+  profile/ProfileRadar.tsx  ECharts 6 轴雷达图
+  resource/DocView.tsx      Markdown 文档渲染
+lib/
+  ai/spark.ts               星火客户端（兼容端点 + 分阶段路由 + mock）
+  agents/                   画像/规划/文档 三个 Agent
+  graph.ts                  LangGraph 多智能体编排
+  knowledge/retriever.ts    最小 RAG 检索
+  store/useLearningStore.ts Zustand 全局状态
+  sse-client.ts             浏览器 SSE 消费
+  types/index.ts            公共类型
+knowledge_base/             课程知识库（数据结构与算法，8 篇种子文档）
+```
+
+## 路线图（向完整赛题系统扩展）
+
+- [ ] 资源生成 Agent 扩展到 5 类：题库/思维导图/教学视频/代码实操/拓展阅读（并行分发）
+- [ ] 接入讯飞 TTS 合成教学视频配音（加分项 ④ 智能辅导）
+- [ ] 加分项 ⑤ 学习效果评估 Agent + 动态路径调整
+- [ ] RAG 升级为 Chroma + BGE-M3 向量检索；补齐防幻觉第 3 层事实核查
+- [ ] 画像持久化（PostgreSQL）、会话缓存（Redis）
+- [ ] Docker Compose 部署、文档与演示视频
+
+## 开源依赖标注（赛题要求）
+
+| 项目 | 用途 | 协议 |
+| --- | --- | --- |
+| THU-MAIC/OpenMAIC | 架构参考（多智能体编排、场景系统思路） | MIT |
+| @langchain/langgraph | 多智能体状态图编排 | MIT |
+| Next.js / React | 全栈框架 | MIT |
+| Tailwind CSS / ECharts / Zustand | UI、可视化、状态管理 | MIT / Apache-2.0 / MIT |
+| react-markdown | Markdown 渲染 | MIT |
+
+> 大模型与 AI 工具：**科大讯飞星火大模型**（OpenAI 兼容接口）。

@@ -24,3 +24,99 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===== 讲解文档 Markdown 渲染（DocView） ===== */
+.doc-view {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #1e293b;
+  word-break: break-word;
+}
+.doc-view h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0.4rem 0 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.doc-view h2 {
+  font-size: 1.12rem;
+  font-weight: 700;
+  margin: 1.1rem 0 0.5rem;
+  color: #1e40af;
+}
+.doc-view h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.8rem 0 0.4rem;
+}
+.doc-view p {
+  margin: 0.5rem 0;
+}
+.doc-view ul,
+.doc-view ol {
+  margin: 0.4rem 0 0.6rem 1.2rem;
+}
+.doc-view ul {
+  list-style: disc;
+}
+.doc-view ol {
+  list-style: decimal;
+}
+.doc-view li {
+  margin: 0.2rem 0;
+}
+.doc-view a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.doc-view code {
+  background: #f1f5f9;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.85em;
+  font-family: ui-monospace, "Consolas", monospace;
+  color: #be123c;
+}
+.doc-view pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 0.8rem 1rem;
+  border-radius: 0.6rem;
+  overflow-x: auto;
+  margin: 0.6rem 0;
+  font-size: 0.82rem;
+}
+.doc-view pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.doc-view blockquote {
+  border-left: 3px solid #93c5fd;
+  background: #eff6ff;
+  margin: 0.6rem 0;
+  padding: 0.3rem 0.8rem;
+  color: #334155;
+}
+.doc-view table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6rem 0;
+  font-size: 0.85rem;
+}
+.doc-view th,
+.doc-view td {
+  border: 1px solid #e2e8f0;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.doc-view th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+.doc-view hr {
+  border: none;
+  border-top: 1px dashed #cbd5e1;
+  margin: 0.8rem 0;
+}
