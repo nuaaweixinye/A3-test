@@ -1,6 +1,5 @@
-// 智能体 · 文档生成 Agent（DocAgent）
-// 赛题必做功能 2：多智能体协同的资源生成 —— "课程讲解文档"类型。
-// 经 runResourceAgent 完成检索约束 + 流式生成 + 引用标注。
+// 智能体 · 拓展阅读 Agent（ReadingAgent）
+// 基于 RAG 推荐阅读材料清单，含来源与章节引用。
 
 import {
   runResourceAgent,
@@ -12,9 +11,9 @@ import type { GeneratedResource, ResourceTask, StudentProfile } from "@/lib/type
 
 const SYSTEM_PROMPT = `${ANTI_HALLUCINATION_RULES}
 
-本次任务：生成一份 Markdown 格式的"讲解文档"，结构包含：一级标题、学习目标、核心概念（含表格/列表）、典型示例（如适用）、复杂度分析、易错提醒、小结。不要输出无关寒暄。`;
+本次任务：生成一份 Markdown 格式的"拓展阅读清单"。给出 5 条左右推荐，优先引用知识库来源名，再补充教材章节、可视化工具、真题等。每条带简短说明。不要输出无关寒暄。`;
 
-export async function generateDoc(
+export async function generateReading(
   profile: StudentProfile,
   task: ResourceTask,
   emit?: Emitter,
@@ -27,6 +26,6 @@ export async function generateDoc(
     buildUserPrompt: ({ task, profile, context }) =>
       `${buildPromptHead({ task, profile, context })}
 
-请输出一份完整的 Markdown 讲解文档。`,
+请输出一份 Markdown 拓展阅读清单。`,
   });
 }

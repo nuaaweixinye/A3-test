@@ -5,14 +5,24 @@ import Link from "next/link";
 import { nanoid } from "nanoid";
 import { streamLearning } from "@/lib/sse-client";
 import { useLearningStore } from "@/lib/store/useLearningStore";
-import { DocView } from "@/components/resource/DocView";
-import type { AgentEvent } from "@/lib/types";
+import type { AgentEvent, ResourceType } from "@/lib/types";
 
-interface Msg {
+interface Turn {
   id: string;
   role: "user" | "assistant";
-  content: string;
+  text?: string;
+  started: ResourceType[];
+  done: boolean;
 }
+
+const RESOURCE_LABEL: Record<ResourceType, string> = {
+  doc: "📄 文档",
+  quiz: "❓ 题库",
+  mindmap: "🧠 导图",
+  video: "🎬 视频",
+  code: "💻 代码",
+  reading: "📚 阅读",
+};
 
 const SUGGESTIONS = [
   "我是零基础，想学数据结构与算法，备战期末考试",
@@ -22,7 +32,7 @@ const SUGGESTIONS = [
 
 export function ChatPanel() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [turns, setTurns] = useState<Turn[]>([]);
 
   const {
     profile,
@@ -32,12 +42,13 @@ export function ChatPanel() {
     error,
     setProfile,
     setPath,
-    addResource,
-    appendDoc,
     setStatus,
     setRunning,
     setError,
-    resetDoc,
+    onResourceStart,
+    onResourceDelta,
+    upsertResource,
+    resetResources,
   } = useLearningStore();
 
   async function send(text: string) {
@@ -46,16 +57,28 @@ export function ChatPanel() {
 
     setInput("");
     setError(null);
-    resetDoc();
+    resetResources();
     setRunning(true);
     setStatus({ agent: "system", message: "多智能体闭环启动中…" });
 
-    const userMsg: Msg = { id: `u-${nanoid()}`, role: "user", content: trimmed };
-    const assistantMsg: Msg = { id: `a-${nanoid()}`, role: "assistant", content: "" };
-    setMessages((m) => [...m, userMsg, assistantMsg]);
+    const userTurn: Turn = {
+      id: `u-${nanoid()}`,
+      role: "user",
+      text: trimmed,
+      started: [],
+      done: true,
+    };
+    const assistantId = `a-${nanoid()}`;
+    const assistantTurn: Turn = {
+      id: assistantId,
+      role: "assistant",
+      started: [],
+      done: false,
+    };
+    setTurns((t) => [...t, userTurn, assistantTurn]);
 
     await streamLearning(trimmed, {
-      onEvent: (e: AgentEvent) => handleEvent(e, assistantMsg.id),
+      onEvent: (e: AgentEvent) => handleEvent(e, assistantId),
     });
     setRunning(false);
     setStatus(null);
@@ -72,22 +95,38 @@ export function ChatPanel() {
       case "path":
         setPath(e.path);
         break;
-      case "doc_delta":
-        appendDoc(e.text);
-        setMessages((m) =>
-          m.map((msg) =>
-            msg.id === assistantId ? { ...msg, content: msg.content + e.text } : msg,
+      case "resource_start":
+        onResourceStart({
+          id: e.id,
+          resType: e.resType,
+          title: e.title,
+          topic: e.topic,
+        });
+        setTurns((t) =>
+          t.map((turn) =>
+            turn.id === assistantId && !turn.started.includes(e.resType)
+              ? { ...turn, started: [...turn.started, e.resType] }
+              : turn,
           ),
         );
         break;
+      case "resource_delta":
+        onResourceDelta(e.id, e.text);
+        break;
       case "resource":
-        addResource(e.resource);
+        upsertResource(e.resource);
         break;
       case "error":
         setError(e.message);
         setRunning(false);
+        setTurns((t) =>
+          t.map((turn) => (turn.id === assistantId ? { ...turn, done: true } : turn)),
+        );
         break;
       case "done":
+        setTurns((t) =>
+          t.map((turn) => (turn.id === assistantId ? { ...turn, done: true } : turn)),
+        );
         break;
     }
   }
@@ -95,11 +134,11 @@ export function ChatPanel() {
   return (
     <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* 对话区 */}
-      <div className="flex-1 space-y-4 overflow-y-auto p-5 max-h-[52vh] min-h-[280px]">
-        {messages.length === 0 && (
+      <div className="flex-1 space-y-4 overflow-y-auto p-5 max-h-[54vh] min-h-[280px]">
+        {turns.length === 0 && (
           <div className="flex h-full min-h-[240px] flex-col items-center justify-center text-center">
             <p className="text-slate-500">
-              告诉我你的<strong>专业背景、学习目标与薄弱点</strong>，多智能体系统将为你构建画像、规划路径并生成讲解文档。
+              告诉我你的<strong>专业背景、学习目标与薄弱点</strong>，多智能体系统将为你构建画像、规划路径，并<strong>并行生成 6 种学习资源</strong>。
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
@@ -115,30 +154,17 @@ export function ChatPanel() {
           </div>
         )}
 
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={m.role === "user" ? "flex justify-end" : "flex justify-start"}
-          >
-            <div
-              className={
-                m.role === "user"
-                  ? "max-w-[80%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-2.5 text-white"
-                  : "max-w-[92%] rounded-2xl rounded-bl-sm bg-slate-50 px-4 py-3 text-slate-800"
-              }
-            >
-              {m.role === "assistant" && !m.content && running ? (
-                <span className="inline-flex gap-1 text-slate-400">
-                  <Dot /> <Dot /> <Dot />
-                </span>
-              ) : m.role === "assistant" ? (
-                <DocView content={m.content} />
-              ) : (
-                <span className="whitespace-pre-wrap">{m.content}</span>
-              )}
+        {turns.map((turn) =>
+          turn.role === "user" ? (
+            <div key={turn.id} className="flex justify-end">
+              <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-2.5 text-white">
+                <span className="whitespace-pre-wrap">{turn.text}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          ) : (
+            <AssistantBubble key={turn.id} turn={turn} />
+          ),
+        )}
       </div>
 
       {/* 状态条 */}
@@ -199,6 +225,53 @@ export function ChatPanel() {
           {running ? "生成中…" : "发送"}
         </button>
       </form>
+    </div>
+  );
+}
+
+function AssistantBubble({ turn }: { turn: Turn }) {
+  const running = !turn.done;
+  const count = turn.started.length;
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-slate-50 px-4 py-3 text-slate-800">
+        {running && count === 0 ? (
+          <span className="inline-flex gap-1 text-slate-400">
+            <Dot /> <Dot /> <Dot />
+            <span className="ml-2 text-xs">多智能体协同启动中…</span>
+          </span>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-sm">
+              多智能体正在为你协同生成 <strong>{count || 6}</strong> 种学习资源：
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {turn.started.map((t) => (
+                <span
+                  key={t}
+                  className="animate-[pulse_1s_ease-in-out_1] rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 ring-1 ring-slate-200"
+                >
+                  {RESOURCE_LABEL[t]}
+                </span>
+              ))}
+              {running && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-slate-400 ring-1 ring-slate-200">
+                  <Dot /> 生成中
+                </span>
+              )}
+            </div>
+            {turn.done && count > 0 && (
+              <Link
+                href="/learn"
+                className="inline-block rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+              >
+                ✓ 已生成 {count} 种资源 → 前往学习中心
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

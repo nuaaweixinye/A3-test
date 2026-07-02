@@ -1,6 +1,5 @@
-// 智能体 · 文档生成 Agent（DocAgent）
-// 赛题必做功能 2：多智能体协同的资源生成 —— "课程讲解文档"类型。
-// 经 runResourceAgent 完成检索约束 + 流式生成 + 引用标注。
+// 智能体 · 代码实操 Agent（CodeAgent）
+// 生成可运行示例代码 + 注释 + 复杂度分析 + 易错点。
 
 import {
   runResourceAgent,
@@ -12,9 +11,9 @@ import type { GeneratedResource, ResourceTask, StudentProfile } from "@/lib/type
 
 const SYSTEM_PROMPT = `${ANTI_HALLUCINATION_RULES}
 
-本次任务：生成一份 Markdown 格式的"讲解文档"，结构包含：一级标题、学习目标、核心概念（含表格/列表）、典型示例（如适用）、复杂度分析、易错提醒、小结。不要输出无关寒暄。`;
+本次任务：生成一份 Markdown 格式的"代码实操案例"。用 \`\`\`python 代码块给出一个聚焦主题的、可直接运行的示例，代码带中文注释；随后给出"复杂度分析"与"易错点"小节。不要输出无关寒暄。`;
 
-export async function generateDoc(
+export async function generateCode(
   profile: StudentProfile,
   task: ResourceTask,
   emit?: Emitter,
@@ -27,6 +26,6 @@ export async function generateDoc(
     buildUserPrompt: ({ task, profile, context }) =>
       `${buildPromptHead({ task, profile, context })}
 
-请输出一份完整的 Markdown 讲解文档。`,
+请输出一份 Markdown 代码实操案例。`,
   });
 }

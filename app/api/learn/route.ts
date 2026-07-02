@@ -1,10 +1,14 @@
-// SSE 流式接口：对话 → 画像 → 路径 → 文档生成 闭环
+// SSE 流式接口：对话 → 画像 → 路径 → 6 个资源 Agent 并行生成 闭环
 // 前端 POST { message } → 本路由流式返回事件：
-//   status | profile | path | doc_delta | resource | done | error
+//   status | profile | path | resource_start | resource_delta | resource | done | error
+//
+// 资源相关事件由各资源节点通过注入的 emit 回调直接推送；
+// profile/path 仍由 graph.stream 的 updates 翻译得到。
 
-import { runLearningLoop, type StreamWriter } from "@/lib/graph";
+import { runLearningLoop } from "@/lib/graph";
 import type { AgentEvent } from "@/lib/types";
 import { isMockMode } from "@/lib/ai/spark";
+import type { Emitter } from "@/lib/agents/resource-runner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +16,9 @@ export const dynamic = "force-dynamic";
 const encoder = new TextEncoder();
 
 function sse(event: AgentEvent): Uint8Array {
-  return encoder.encode(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+  return encoder.encode(
+    `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
+  );
 }
 
 export async function POST(req: Request) {
@@ -34,25 +40,19 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (e: AgentEvent) => controller.enqueue(sse(e));
+      const emit: Emitter = (e) => controller.enqueue(sse(e));
 
-      const writer: StreamWriter = (text: string) => {
-        if (text) send({ type: "doc_delta", text });
-      };
-
-      send({
+      emit({
         type: "status",
         agent: "system",
         message: `多智能体闭环已启动（模式：${mode}）`,
       });
 
       try {
-        const graphStream = await runLearningLoop({ userMessage: message }, {
-          configurable: {
-            writer,
-            onStatus: (agent, msg) => send({ type: "status", agent, message: msg }),
-          },
-        });
+        const graphStream = await runLearningLoop(
+          { userMessage: message },
+          { configurable: { emit } },
+        );
 
         for await (const chunk of graphStream) {
           // streamMode=updates：每个 yield 形如 { 节点名: 该节点返回的状态增量 }
@@ -60,17 +60,16 @@ export async function POST(req: Request) {
           for (const [node, delta] of Object.entries(update)) {
             if (!delta) continue;
             if (node === "profile_builder" && delta.profile) {
-              send({ type: "profile", profile: delta.profile as never });
-            } else if (node === "path_planner") {
-              if (delta.path) send({ type: "path", path: delta.path as never });
-            } else if (node === "doc_generator" && delta.resource) {
-              send({ type: "resource", resource: delta.resource as never });
+              emit({ type: "profile", profile: delta.profile as never });
+            } else if (node === "path_planner" && delta.path) {
+              emit({ type: "path", path: delta.path as never });
             }
+            // 资源节点(*_gen)的事件已由 emit 直接推送，此处无需重复处理
           }
         }
-        send({ type: "done" });
+        emit({ type: "done" });
       } catch (err) {
-        send({
+        emit({
           type: "error",
           message: err instanceof Error ? err.message : String(err),
         });

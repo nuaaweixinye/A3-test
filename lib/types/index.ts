@@ -71,8 +71,23 @@ export interface LearningState {
   userMessage: string;
   profile: StudentProfile | null;
   path: LearningPath | null;
-  docTask: ResourceTask | null;
-  resource: GeneratedResource | null;
+  /** 规划阶段确定的本次主主题（资源生成共用） */
+  primaryTopic: string;
+  /** 规划阶段确定的资源任务清单（≥5 种类型） */
+  resourceTasks: ResourceTask[];
+  /** 6 个资源 Agent 并行产出（加法聚合） */
+  resources: GeneratedResource[];
+}
+
+/** 前端流式资源卡片状态（生成中 / 已完成） */
+export interface ResourceCardState {
+  id: string;
+  resType: ResourceType;
+  title: string;
+  topic: string;
+  content: string;
+  sources: string[];
+  done: boolean;
 }
 
 /* ===================== SSE 事件（前后端协议） ===================== */
@@ -81,7 +96,14 @@ export type AgentEvent =
   | { type: "status"; agent: string; message: string }
   | { type: "profile"; profile: StudentProfile }
   | { type: "path"; path: LearningPath }
-  | { type: "doc_delta"; text: string }
+  | {
+      type: "resource_start";
+      id: string;
+      resType: ResourceType;
+      title: string;
+      topic: string;
+    }
+  | { type: "resource_delta"; id: string; text: string }
   | { type: "resource"; resource: GeneratedResource }
   | { type: "done" }
   | { type: "error"; message: string };
