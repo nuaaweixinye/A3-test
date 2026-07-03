@@ -15,8 +15,8 @@ export interface ChatMsg {
   content: string;
 }
 
-/** 分阶段模型路由的"阶段"：画像 / 规划 / 各资源类型 */
-export type Stage = "profile" | "planner" | ResourceType;
+/** 分阶段模型路由的"阶段"：画像 / 规划 / 各资源类型 / 辅导 / 评估 */
+export type Stage = "profile" | "planner" | ResourceType | "tutor" | "eval";
 
 const DEFAULT_BASE_URL = "https://spark-api-open.xf-yun.com/v1";
 const DEFAULT_MODEL = "4.0Ultra";
@@ -172,10 +172,22 @@ function mockResponse(opts: CallOptions): string {
       return mockReading(extractTopic(opts.messages));
     case "video":
       return mockVideo(extractTopic(opts.messages));
+    case "tutor":
+      return mockTutor(extractQuestion(opts.messages));
+    case "eval":
+      return JSON.stringify(mockEval(opts.messages), null, 2);
     case "doc":
     default:
       return mockDoc(extractTopic(opts.messages));
   }
+}
+
+/** 从辅导 Prompt 中解析学生提问（tutor-agent 的 user prompt 含【问题】xxx） */
+function extractQuestion(messages: ChatMsg[]): string {
+  const user = messages.find((m) => m.role === "user")?.content ?? "";
+  const m = user.match(/【问题】([^\n]*)/);
+  if (m && m[1].trim()) return m[1].trim();
+  return user.slice(0, 60);
 }
 
 /** 从 Prompt 中解析主题（resource-runner 的 user prompt 含【主题】xxx） */
@@ -405,4 +417,92 @@ function mockVideo(topic: string): string {
 
 ---
 *（mock 模式：接入星火 + 讯飞 TTS 后，分镜与配音将由大模型真实生成）*`;
+}
+
+/* ============ 加分项 ④/⑤ 的 mock ============ */
+
+function mockTutor(question: string): string {
+  return `**关于：${question}**
+
+根据课程知识库，简要解答如下：
+
+1. **核心要点**：这是一个数据结构与算法中的常见问题。建议先厘清基本定义，再分析时间/空间复杂度。
+2. **图解思路**：
+   \`\`\`mermaid
+   flowchart LR
+     A[输入] --> B{判断条件}
+     B -- 是 --> C[处理分支1]
+     B -- 否 --> D[处理分支2]
+     C --> E[输出]
+     D --> E
+   \`\`\`
+3. **示例**：以数组为例，遍历比较即可定位元素，时间复杂度 O(n)。
+4. **易错提醒**：注意边界条件与空集合的特判。
+
+> （参考：知识库 · 数据结构与算法）
+
+---
+*（mock 模式：接入星火后由辅导智能体基于 RAG 真实作答）*`;
+}
+
+/** mock 评估：从 Prompt 中解析自评掌握度，做真实计算（让闭环演示可信） */
+function mockEval(messages: ChatMsg[]): Record<string, unknown> {
+  const user = messages.find((m) => m.role === "user")?.content ?? "";
+  const mastery: Record<string, number> = {};
+  const m = user.match(/【自评掌握度】\s*([\s\S]*?)(?:\n【|\n$|$)/);
+  if (m) {
+    try {
+      const obj = JSON.parse(m[1].trim());
+      for (const [k, v] of Object.entries(obj)) {
+        mastery[k] = Math.max(0, Math.min(100, Number(v) || 0));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const topics = Object.keys(mastery);
+  if (topics.length === 0) {
+    mastery["数据结构基础"] = 55;
+    mastery["排序算法"] = 45;
+    mastery["查找算法"] = 60;
+  }
+  const vals = Object.values(mastery);
+  const overall = vals.length
+    ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+    : 50;
+  const weak = Object.entries(mastery)
+    .filter(([, v]) => v < 60)
+    .map(([k]) => k);
+  const strong = Object.entries(mastery)
+    .filter(([, v]) => v >= 80)
+    .map(([k]) => k);
+  const trend = overall >= 70 ? "improving" : overall >= 55 ? "steady" : "needs_review";
+
+  const recommendations: string[] = [];
+  if (weak.length) {
+    recommendations.push(`针对薄弱主题（${weak.join("、")}）回到「学习中心」重看讲解文档与题库。`);
+  }
+  if (overall < 60) {
+    recommendations.push("整体掌握度偏低，建议放慢节奏（learning_pace 调整为 slow）并增加练习。");
+  } else {
+    recommendations.push("保持当前节奏，尝试代码实操与拓展阅读以巩固。");
+  }
+  recommendations.push("可进入「智能辅导」对仍不清晰的知识点进行即时追问。");
+
+  return {
+    overall_score: overall,
+    mastery,
+    weak_points: weak,
+    strong_points: strong,
+    progress_trend: trend,
+    recommendations,
+    profile_update: { knowledge_level: mastery },
+    path_adjustment: {
+      action: weak.length ? "review" : overall >= 75 ? "advance" : "steady",
+      focus_topics: weak,
+      summary: weak.length
+        ? `检测到 ${weak.length} 个薄弱主题，建议优先复习。`
+        : "各主题掌握均衡，可进入下一阶段。",
+    },
+  };
 }

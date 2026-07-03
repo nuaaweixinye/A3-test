@@ -18,6 +18,7 @@ export default function LearnPage() {
   const path = useLearningStore((s) => s.path);
   const resourceOrder = useLearningStore((s) => s.resourceOrder);
   const resourceCards = useLearningStore((s) => s.resourceCards);
+  const weakTopics = useLearningStore((s) => s.weakTopics);
 
   const cards = resourceOrder
     .map((id) => resourceCards[id])
@@ -45,6 +46,16 @@ export default function LearnPage() {
           暂无学习内容。
           <Link href="/" className="ml-2 text-blue-600 underline">
             去发起一次对话
+          </Link>
+        </div>
+      )}
+
+      {weakTopics.length > 0 && (
+        <div className="rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700 ring-1 ring-rose-200">
+          🎯 评估建议重点复习：
+          {weakTopics.map((t) => t).join("、")}
+          <Link href="/eval" className="ml-2 underline">
+            查看评估
           </Link>
         </div>
       )}
@@ -92,7 +103,11 @@ export default function LearnPage() {
             <p className="text-sm text-slate-400">资源生成中…</p>
           )}
           {cards.map((card) => (
-            <ResourceCard key={card.id} card={card} />
+            <ResourceCard
+              key={card.id}
+              card={card}
+              weak={weakTopics.includes(card.topic)}
+            />
           ))}
         </section>
       </div>

@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { DocView } from "@/components/resource/DocView";
+import { SpeakButton } from "@/components/resource/SpeakButton";
+import { MasterySlider } from "@/components/resource/MasterySlider";
+import { useLearningStore } from "@/lib/store/useLearningStore";
 import type { ResourceCardState, ResourceType } from "@/lib/types";
 
 const META: Record<ResourceType, { label: string; badge: string; icon: string }> = {
@@ -13,10 +16,51 @@ const META: Record<ResourceType, { label: string; badge: string; icon: string }>
   reading: { label: "拓展阅读", badge: "bg-cyan-50 text-cyan-700", icon: "📚" },
 };
 
-export function ResourceCard({ card }: { card: ResourceCardState }) {
+export function ResourceCard({
+  card,
+  weak = false,
+}: {
+  card: ResourceCardState;
+  weak?: boolean;
+}) {
   const meta = META[card.resType];
+  const ref = useRef<HTMLElement | null>(null);
+  const markViewed = useLearningStore((s) => s.markViewed);
+  const addViewTime = useLearningStore((s) => s.addViewTime);
+
+  // 浏览行为采集（评估输入）：可见时标记并累加时长
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            markViewed(card.topic);
+            if (!timer) {
+              timer = setInterval(() => addViewTime(card.topic, 2), 2000);
+            }
+          } else if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+        }
+      },
+      { threshold: 0.3 },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (timer) clearInterval(timer);
+    };
+  }, [card.topic, markViewed, addViewTime]);
+
   return (
-    <section className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section
+      ref={ref}
+      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+    >
       <header className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-lg">{meta.icon}</span>
@@ -28,6 +72,11 @@ export function ResourceCard({ card }: { card: ResourceCardState }) {
           <span className="truncate text-sm font-semibold text-slate-700">
             {card.title}
           </span>
+          {weak && (
+            <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-600 ring-1 ring-rose-200">
+              建议复习
+            </span>
+          )}
         </div>
         <span className="shrink-0 text-xs text-slate-400">
           {card.done ? "✓ 已完成" : "生成中…"}
@@ -44,66 +93,21 @@ export function ResourceCard({ card }: { card: ResourceCardState }) {
 
       {card.resType === "video" && card.content && (
         <div className="mt-3 border-t border-slate-100 pt-3">
-          <SpeakButton content={card.content} />
+          <SpeakButton text={extractNarration(card.content)} />
         </div>
       )}
 
-      {card.sources.length > 0 && card.done && (
-        <footer className="mt-3 border-t border-slate-100 pt-2 text-xs text-slate-400">
-          知识库引用：{card.sources.join("、")}
-        </footer>
+      {card.done && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+          <MasterySlider topic={card.topic} />
+          {card.sources.length > 0 && (
+            <span className="text-xs text-slate-400">
+              引用：{card.sources.join("、")}
+            </span>
+          )}
+        </div>
       )}
     </section>
-  );
-}
-
-/** 视频卡片：用浏览器内置语音合成朗读旁白（占位配音，后续替换为讯飞 TTS） */
-function SpeakButton({ content }: { content: string }) {
-  const [speaking, setSpeaking] = useState(false);
-  const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  function toggle() {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (speaking) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-      return;
-    }
-    const text = extractNarration(content);
-    if (!text) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "zh-CN";
-    u.rate = 1;
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    utterRef.current = u;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-    setSpeaking(true);
-  }
-
-  const hasNarration = extractNarration(content).length > 0;
-
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={!hasNarration}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {speaking ? "⏹ 停止朗读" : "▶ 语音播放"}
-      <span className="text-[10px] font-normal text-violet-200">
-        （浏览器语音占位）
-      </span>
-    </button>
   );
 }
 

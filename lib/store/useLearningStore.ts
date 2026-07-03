@@ -7,6 +7,7 @@ import type {
   LearningPath,
   GeneratedResource,
   ResourceCardState,
+  TopicProgress,
 } from "@/lib/types";
 
 interface StatusUpdate {
@@ -25,6 +26,11 @@ interface LearningStore {
   resourceOrder: string[];
   resourceCards: Record<string, ResourceCardState>;
 
+  /** ⑤评估输入：每个主题的自评掌握度 + 浏览行为 */
+  progress: Record<string, TopicProgress>;
+  /** 评估回写：需要重点复习的薄弱主题（/learn 上展示徽标） */
+  weakTopics: string[];
+
   setProfile: (p: StudentProfile) => void;
   setPath: (p: LearningPath) => void;
   setStatus: (s: StatusUpdate | null) => void;
@@ -40,6 +46,12 @@ interface LearningStore {
   onResourceDelta: (id: string, text: string) => void;
   upsertResource: (r: GeneratedResource) => void;
   resetResources: () => void;
+
+  setMastery: (topic: string, value: number) => void;
+  markViewed: (topic: string) => void;
+  addViewTime: (topic: string, seconds: number) => void;
+  setWeakTopics: (topics: string[]) => void;
+  resetProgress: () => void;
 }
 
 export const useLearningStore = create<LearningStore>((set) => ({
@@ -50,6 +62,8 @@ export const useLearningStore = create<LearningStore>((set) => ({
   error: null,
   resourceOrder: [],
   resourceCards: {},
+  progress: {},
+  weakTopics: [],
 
   setProfile: (p) => set({ profile: p }),
   setPath: (p) => set({ path: p }),
@@ -111,4 +125,40 @@ export const useLearningStore = create<LearningStore>((set) => ({
     }),
 
   resetResources: () => set({ resourceOrder: [], resourceCards: {} }),
+
+  setMastery: (topic, value) =>
+    set((s) => {
+      const prev = s.progress[topic] ?? { mastery: 0, viewed: false, viewSeconds: 0 };
+      return {
+        progress: { ...s.progress, [topic]: { ...prev, mastery: value } },
+      };
+    }),
+
+  markViewed: (topic) =>
+    set((s) => {
+      const prev = s.progress[topic] ?? { mastery: 0, viewed: false, viewSeconds: 0 };
+      if (prev.viewed) return s;
+      return {
+        progress: { ...s.progress, [topic]: { ...prev, viewed: true } },
+      };
+    }),
+
+  addViewTime: (topic, seconds) =>
+    set((s) => {
+      const prev = s.progress[topic] ?? { mastery: 0, viewed: false, viewSeconds: 0 };
+      return {
+        progress: {
+          ...s.progress,
+          [topic]: {
+            ...prev,
+            viewed: true,
+            viewSeconds: prev.viewSeconds + seconds,
+          },
+        },
+      };
+    }),
+
+  setWeakTopics: (weakTopics) => set({ weakTopics }),
+
+  resetProgress: () => set({ progress: {}, weakTopics: [] }),
 }));

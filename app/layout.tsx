@@ -43,6 +43,8 @@ export default function RootLayout({
               <NavLink href="/">对话</NavLink>
               <NavLink href="/profile">画像</NavLink>
               <NavLink href="/learn">学习中心</NavLink>
+              <NavLink href="/tutor">辅导</NavLink>
+              <NavLink href="/eval">评估</NavLink>
             </div>
           </nav>
         </header>

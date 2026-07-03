@@ -90,7 +90,48 @@ export interface ResourceCardState {
   done: boolean;
 }
 
-/* ===================== SSE 事件（前后端协议） ===================== */
+/* ===================== 加分项 ⑤：学习效果评估 ===================== */
+
+/** 单主题学习进度（自评掌握度 + 浏览行为） */
+export interface TopicProgress {
+  /** 学生自评掌握度 0~100 */
+  mastery: number;
+  /** 是否浏览过该资源 */
+  viewed: boolean;
+  /** 浏览累计秒数 */
+  viewSeconds: number;
+}
+
+export type ProgressTrend = "improving" | "steady" | "needs_review";
+
+/** 评估结果：含回写画像与路径调整建议（闭环） */
+export interface EvaluationResult {
+  overall_score: number;
+  /** 主题 -> 0~100 掌握度 */
+  mastery: Record<string, number>;
+  weak_points: string[];
+  strong_points: string[];
+  progress_trend: ProgressTrend;
+  recommendations: string[];
+  /** 合并回 StudentProfile.knowledge_level，形成"评估→画像"回路 */
+  profile_update: {
+    knowledge_level: Record<string, number>;
+  };
+  /** 动态路径调整建议，形成"评估→路径"回路 */
+  path_adjustment: {
+    action: "advance" | "review" | "steady";
+    focus_topics: string[];
+    summary: string;
+  };
+}
+
+/* ===================== 加分项 ④：智能辅导（多轮对话） ===================== */
+
+export interface TutorTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 
 export type AgentEvent =
   | { type: "status"; agent: string; message: string }

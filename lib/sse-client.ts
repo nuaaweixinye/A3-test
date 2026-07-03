@@ -70,3 +70,75 @@ function parseSseBlock(block: string): AgentEvent | null {
     return null;
   }
 }
+
+/** 通用文本增量 SSE 消费器：用于辅导等"逐 token 文本流"接口。
+ *  约定事件：delta{ text } / done / error{ message } */
+export async function streamTextSse(
+  url: string,
+  body: unknown,
+  handlers: {
+    onDelta: (text: string) => void;
+    onDone?: () => void;
+    onError?: (e: Error) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") return;
+    handlers.onError?.(e as Error);
+    return;
+  }
+
+  if (!res.ok || !res.body) {
+    handlers.onError?.(new Error(`请求失败：HTTP ${res.status}`));
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split("\n\n");
+      buffer = blocks.pop() ?? "";
+      for (const block of blocks) {
+        let type: string | null = null;
+        let dataStr = "";
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event:")) type = line.slice(6).trim();
+          else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+        }
+        if (!type) continue;
+        let parsed: Record<string, unknown> = {};
+        try {
+          parsed = JSON.parse(dataStr);
+        } catch {
+          continue;
+        }
+        if (type === "delta" && typeof parsed.text === "string") {
+          handlers.onDelta(parsed.text);
+        } else if (type === "error") {
+          handlers.onError?.(new Error(String(parsed.message ?? "未知错误")));
+        } else if (type === "done") {
+          handlers.onDone?.();
+        }
+      }
+    }
+    handlers.onDone?.();
+  } catch (e) {
+    if ((e as Error).name === "AbortError") return;
+    handlers.onError?.(e as Error);
+  }
+}
