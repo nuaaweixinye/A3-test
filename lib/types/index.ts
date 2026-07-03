@@ -62,7 +62,19 @@ export interface GeneratedResource {
   content: string;
   /** 引用来源（防幻觉第 4 层：引用标注） */
   sources: string[];
+  /** 防幻觉第 3 层：生成后事实核查结果 */
+  fact_check?: FactCheckResult;
   created_at: string;
+}
+
+/** 防幻觉第 3 层：事实核查结果 */
+export interface FactCheckResult {
+  /** 有知识库佐证的可核声明占比 0~100 */
+  score: number;
+  /** 未找到佐证的声明（待人工/再检索核验） */
+  flagged: string[];
+  /** 可核声明总数 */
+  checked: number;
 }
 
 /* ===================== LangGraph 共享状态 ===================== */
@@ -87,6 +99,7 @@ export interface ResourceCardState {
   topic: string;
   content: string;
   sources: string[];
+  fact_check?: FactCheckResult;
   done: boolean;
 }
 

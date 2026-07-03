@@ -106,6 +106,7 @@ export const useLearningStore = create<LearningStore>((set) => ({
                 ...existing,
                 content: r.content || existing.content,
                 sources: r.sources,
+                fact_check: r.fact_check,
                 done: true,
               }
             : {
@@ -115,6 +116,7 @@ export const useLearningStore = create<LearningStore>((set) => ({
                 topic: r.topic,
                 content: r.content,
                 sources: r.sources,
+                fact_check: r.fact_check,
                 done: true,
               },
         },

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DocView } from "@/components/resource/DocView";
 import { SpeakButton } from "@/components/resource/SpeakButton";
 import { MasterySlider } from "@/components/resource/MasterySlider";
 import { useLearningStore } from "@/lib/store/useLearningStore";
-import type { ResourceCardState, ResourceType } from "@/lib/types";
+import type { FactCheckResult, ResourceCardState, ResourceType } from "@/lib/types";
 
 const META: Record<ResourceType, { label: string; badge: string; icon: string }> = {
   doc: { label: "讲解文档", badge: "bg-blue-50 text-blue-700", icon: "📄" },
@@ -107,7 +107,43 @@ export function ResourceCard({
           )}
         </div>
       )}
+
+      {card.done && card.fact_check && (
+        <div className="mt-2 border-t border-slate-100 pt-2">
+          <FactCheckView fc={card.fact_check} />
+        </div>
+      )}
     </section>
+  );
+}
+
+/** 防幻觉第 3 层展示：事实核查分数 + 可展开的待核声明 */
+function FactCheckView({ fc }: { fc: FactCheckResult }) {
+  const [open, setOpen] = useState(false);
+  const ok = fc.score >= 80;
+  return (
+    <div className="text-xs">
+      <button
+        type="button"
+        onClick={() => fc.flagged.length && setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5"
+      >
+        <span className={ok ? "text-emerald-600" : "text-amber-600"}>
+          🔍 事实核查：{fc.score}%
+        </span>
+        <span className="text-slate-400">
+          （{fc.checked > 0 ? `已核 ${fc.checked} 条` : "无可核声明"}
+          {fc.flagged.length > 0 ? `，${fc.flagged.length} 条待核` : ""}）
+        </span>
+      </button>
+      {open && fc.flagged.length > 0 && (
+        <ul className="mt-1 space-y-0.5 pl-4 text-slate-500">
+          {fc.flagged.map((f, i) => (
+            <li key={i} className="list-disc">未在知识库找到佐证：{f}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

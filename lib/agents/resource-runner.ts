@@ -5,6 +5,7 @@
 
 import { streamSpark, type ChatMsg, type Stage } from "@/lib/ai/spark";
 import { searchKnowledge, formatContext } from "@/lib/knowledge/retriever";
+import { factCheck } from "@/lib/knowledge/fact-check";
 import type {
   AgentEvent,
   GeneratedResource,
@@ -72,6 +73,9 @@ export async function runResourceAgent(
     emit?.({ type: "resource_delta", id, text: delta });
   }
 
+  // 防幻觉第 3 层：生成完成后事实核查（回查知识库交叉验证）
+  const factCheckResult = factCheck(content, task.topic);
+
   const resource: GeneratedResource = {
     id,
     type: task.type,
@@ -79,6 +83,7 @@ export async function runResourceAgent(
     topic: task.topic,
     content,
     sources,
+    fact_check: factCheckResult,
     created_at: new Date().toISOString(),
   };
   emit?.({ type: "resource", resource });
