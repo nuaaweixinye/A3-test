@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+
+  profile      Profile?
+  learnRecords LearnRecord[]
+}
+
+model Profile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  knowledgeLevel String   @default("{}")
+  cognitiveStyle String   @default("visual")
+  errorPatterns  String   @default("[]")
+  learningGoal   String   @default("interest")
+  learningPace   String   @default("medium")
+  interests      String   @default("[]")
+  updatedAt      DateTime @updatedAt
+}
+
+model LearnRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  topic     String
+  path      String   @default("{}")
+  resources String   @default("[]")
+  progress  String   @default("{}")
+  createdAt DateTime @default(now())
+}
