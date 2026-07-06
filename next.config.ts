@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/learn": ["./backend/knowledge_base/**/*"],
     "/api/tutor": ["./backend/knowledge_base/**/*"],
+    "/api/profile": ["./prisma/**/*"],
+    "/api/records": ["./prisma/**/*"],
+    "/api/auth/register": ["./prisma/**/*"],
+    "/api/auth/login": ["./prisma/**/*"],
+    "/api/auth/me": ["./prisma/**/*"],
   },
 };
 

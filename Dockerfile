@@ -11,9 +11,11 @@ RUN npm ci
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY ./prisma ./prisma
 COPY . .
 # Next 16 默认 Turbopack 构建，output:standalone 产出 .next/standalone
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN npx prisma generate
 RUN npm run build
 
 # ===== 3. 运行层 =====
