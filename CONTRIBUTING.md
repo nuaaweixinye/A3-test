@@ -58,8 +58,8 @@ git push -u origin feature/你的任务名
 
 | 角色 | 主要改动的目录 | 示例任务 |
 | --- | --- | --- |
-| 🅰 后端/智能体 | `lib/agents/*`、`lib/ai/*`、`lib/knowledge/*`、`knowledge_base/`、`lib/graph.ts` | 星火联调、Prompt、知识库扩写 |
-| 🅱 前端/交互 | `components/*`、`app/**/page.tsx`、`app/globals.css`、`lib/store/*`、`lib/sse-client.ts` | 响应式、多轮历史、渲染 |
+| 🅰 后端/智能体 | `backend/`（agents/、ai/、knowledge/、graph.ts、types/） | 星火联调、Prompt、知识库扩写 |
+| 🅱 前端/交互 | `frontend/`（components/、lib/）、`app/**/page.tsx`、`app/globals.css` | 响应式、多轮历史、渲染 |
 | 🅲 工程/交付 | `tests/*`、`docs/*`、`Dockerfile`、`docker-compose.yml`、`next.config.ts`、根目录脚本 | 单测、文档、视频、部署 |
 
 > 角色可轮换；原则是**当前任务尽量落在自己目录里**。
@@ -67,7 +67,7 @@ git push -u origin feature/你的任务名
 ## 6. 共享接口冻结（重要）
 
 以下文件是**三人共用的契约**，**不要擅自改**，确需改动先在群里/issue 报备，统一由一人改并通知：
-- `lib/types/index.ts`（类型 + SSE 事件协议）
+- `backend/types/index.ts`（类型 + SSE 事件协议）
 - API 契约：`/api/learn`、`/api/tutor`、`/api/eval` 的请求/响应结构
 - `.env.example`（环境变量约定）
 

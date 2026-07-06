@@ -1,7 +1,7 @@
 // 评估接口（加分项 ⑤）：POST { profile, progress, topics } → 返回 EvaluationResult JSON
 
-import { evaluate } from "@/lib/agents/eval-agent";
-import type { StudentProfile, TopicProgress } from "@/lib/types";
+import { evaluate } from "@/backend/agents/eval-agent";
+import type { StudentProfile, TopicProgress } from "@/backend/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useLearningStore } from "@/lib/store/useLearningStore";
-import { ProfileRadar } from "@/components/profile/ProfileRadar";
+import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
+import { ProfileRadar } from "@/frontend/components/profile/ProfileRadar";
 
 export default function ProfilePage() {
   const profile = useLearningStore((s) => s.profile);

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useLearningStore } from "@/lib/store/useLearningStore";
-import { ResourceCard } from "@/components/resource/ResourceCard";
-import type { ResourceType } from "@/lib/types";
+import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
+import { ResourceCard } from "@/frontend/components/resource/ResourceCard";
+import type { ResourceType } from "@/backend/types";
 
 const RESOURCE_LABEL: Record<ResourceType, string> = {
   doc: "文档",

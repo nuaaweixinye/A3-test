@@ -36,7 +36,7 @@
 ### 2.1 讯飞星火大模型（已接入）
 - **接入方式**：通过讯飞开放平台提供的 **OpenAI 兼容端点** `https://spark-api-open.xf-yun.com/v1/chat/completions`。
 - **鉴权**：`Authorization: Bearer <SPARK_API_KEY>`（控制台生成的接口密钥/APIPassword）。
-- **分阶段模型路由**（`lib/ai/spark.ts`）：画像抽取用 `lite`，资源生成/辅导用 `4.0Ultra`，评估用 `pro`，由 `MODEL_ROUTES` 环境变量配置。
+- **分阶段模型路由**（`backend/ai/spark.ts`）：画像抽取用 `lite`，资源生成/辅导用 `4.0Ultra`，评估用 `pro`，由 `MODEL_ROUTES` 环境变量配置。
 - **流式**：直接解析星火 SSE（`data: {chunk}` / `data: [DONE]`），逐 token 推送到前端。
 - **配置位置**：`.env` 的 `SPARK_API_KEY`（见 `.env.example`）。
 

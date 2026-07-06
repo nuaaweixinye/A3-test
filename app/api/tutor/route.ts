@@ -1,8 +1,8 @@
 // SSE 流式接口：智能辅导（加分项 ④）
 // 前端 POST { message, history, profile } → 流式返回 delta{ text } / done / error
 
-import { answerTutorStream } from "@/lib/agents/tutor-agent";
-import type { StudentProfile, TutorTurn } from "@/lib/types";
+import { answerTutorStream } from "@/backend/agents/tutor-agent";
+import type { StudentProfile, TutorTurn } from "@/backend/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useLearningStore } from "@/lib/store/useLearningStore";
-import { EvalRadar } from "@/components/eval/EvalRadar";
-import type { EvaluationResult } from "@/lib/types";
+import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
+import { EvalRadar } from "@/frontend/components/eval/EvalRadar";
+import type { EvaluationResult } from "@/backend/types";
 
 const TREND_LABEL = {
   improving: "稳步提升",

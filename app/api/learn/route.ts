@@ -5,10 +5,10 @@
 // 资源相关事件由各资源节点通过注入的 emit 回调直接推送；
 // profile/path 仍由 graph.stream 的 updates 翻译得到。
 
-import { runLearningLoop } from "@/lib/graph";
-import type { AgentEvent } from "@/lib/types";
-import { isMockMode } from "@/lib/ai/spark";
-import type { Emitter } from "@/lib/agents/resource-runner";
+import { runLearningLoop } from "@/backend/graph";
+import type { AgentEvent } from "@/backend/types";
+import { isMockMode } from "@/backend/ai/spark";
+import type { Emitter } from "@/backend/agents/resource-runner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

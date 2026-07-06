@@ -15,11 +15,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Docker: `docker compose up --build` (port 3000; env `SPARK_API_KEY` optional)
 
 ## Key conventions
-- Single-language Next.js full-stack app (no separate Python backend).
-- Multi-agent orchestration via **LangGraph.js** in `lib/graph.ts`. Node names must NOT collide with state channel names (e.g. don't name a node `profile` when a channel is `profile`) — LangGraph throws at compile time.
-- LLM = 科大讯飞星火 via OpenAI-compatible endpoint. When `SPARK_API_KEY` is unset, `lib/ai/spark.ts` runs in **mock mode** so the UI works without keys.
-- Streaming = raw `ReadableStream` SSE in `app/api/{learn,tutor}/route.ts` (not AI SDK). Event protocol types: `lib/types.ts` (`AgentEvent` for learn; `streamTextSse` delta/done for tutor).
-- Reading files at runtime (e.g. `knowledge_base/*.md`) is OK — route handlers run on Node.js runtime. Next standalone auto-traces `knowledge_base/` into the output.
-- Anti-hallucination = 4 layers; layer 3 fact-check lives in `lib/knowledge/fact-check.ts`, attached to `GeneratedResource.fact_check` by `lib/agents/resource-runner.ts`.
+- Single-language Next.js full-stack app (no separate Python backend). Code is split: `backend/` (agents, graph, AI, knowledge, types) + `frontend/` (components, store, sse-client) + `app/` (Next.js routes, thin shell).
+- Multi-agent orchestration via **LangGraph.js** in `backend/graph.ts`. Node names must NOT collide with state channel names (e.g. don't name a node `profile` when a channel is `profile`) — LangGraph throws at compile time.
+- LLM = 科大讯飞星火 via OpenAI-compatible endpoint. When `SPARK_API_KEY` is unset, `backend/ai/spark.ts` runs in **mock mode** so the UI works without keys.
+- Streaming = raw `ReadableStream` SSE in `app/api/{learn,tutor}/route.ts` (not AI SDK). Event protocol types: `backend/types/index.ts` (`AgentEvent` for learn; `streamTextSse` delta/done for tutor).
+- Reading files at runtime (e.g. `backend/backend/knowledge_base/*.md`) is OK — route handlers run on Node.js runtime. Dockerfile manually copies `backend/backend/knowledge_base/` into standalone output.
+- Anti-hallucination = 4 layers; layer 3 fact-check lives in `backend/knowledge/fact-check.ts`, attached to `GeneratedResource.fact_check` by `backend/agents/resource-runner.ts`.
 - Docs in `docs/` (系统开发说明书 / 测试说明书 / 开源标注与AI工具说明 / 架构与流程图).
+- Import paths: `@/backend/*` for server code, `@/frontend/*` for client code (both resolve via `@/*` → root in tsconfig).
 

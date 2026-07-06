@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { nanoid } from "nanoid";
-import { streamTextSse } from "@/lib/sse-client";
-import { useLearningStore } from "@/lib/store/useLearningStore";
-import { DocView } from "@/components/resource/DocView";
-import { SpeakButton } from "@/components/resource/SpeakButton";
-import type { TutorTurn } from "@/lib/types";
+import { streamTextSse } from "@/frontend/lib/sse-client";
+import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
+import { DocView } from "@/frontend/components/resource/DocView";
+import { SpeakButton } from "@/frontend/components/resource/SpeakButton";
+import type { TutorTurn } from "@/backend/types";
 
 interface Msg {
   id: string;
