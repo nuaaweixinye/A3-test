@@ -31,6 +31,9 @@ interface LearningStore {
   /** 评估回写：需要重点复习的薄弱主题（/learn 上展示徽标） */
   weakTopics: string[];
 
+  user: { id: string; username: string } | null;
+  setUser: (user: { id: string; username: string } | null) => void;
+
   setProfile: (p: StudentProfile) => void;
   setPath: (p: LearningPath) => void;
   setStatus: (s: StatusUpdate | null) => void;
@@ -64,6 +67,8 @@ export const useLearningStore = create<LearningStore>((set) => ({
   resourceCards: {},
   progress: {},
   weakTopics: [],
+  user: null,
+  setUser: (user) => set({ user }),
 
   setProfile: (p) => set({ profile: p }),
   setPath: (p) => set({ path: p }),
