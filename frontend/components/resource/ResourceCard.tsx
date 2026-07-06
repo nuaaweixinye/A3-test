@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { DocView } from "@/frontend/components/resource/DocView";
-import { VideoPlayer } from "@/frontend/components/resource/VideoPlayer";
+import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { MasterySlider } from "@/frontend/components/resource/MasterySlider";
 import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
-import type { FactCheckResult, ResourceCardState, ResourceType } from "@/backend/types";
+import type { ResourceCardState, ResourceType } from "@/backend/types";
 
 const META: Record<ResourceType, { label: string; badge: string; icon: string }> = {
   doc: { label: "讲解文档", badge: "bg-blue-50 text-blue-700", icon: "📄" },
@@ -24,7 +23,7 @@ export function ResourceCard({
   weak?: boolean;
 }) {
   const meta = META[card.resType];
-  const ref = useRef<HTMLElement | null>(null);
+  const ref = useRef<HTMLAnchorElement | null>(null);
   const markViewed = useLearningStore((s) => s.markViewed);
   const addViewTime = useLearningStore((s) => s.addViewTime);
 
@@ -57,9 +56,10 @@ export function ResourceCard({
   }, [card.topic, markViewed, addViewTime]);
 
   return (
-    <section
+    <Link
       ref={ref}
-      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      href={`/learn/${card.id}`}
+      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md cursor-pointer"
     >
       <header className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -85,62 +85,23 @@ export function ResourceCard({
 
       <div className="flex-1">
         {card.content ? (
-          card.resType === "video" ? (
-            <VideoPlayer content={card.content} />
-          ) : (
-            <DocView content={card.content} />
-          )
+          <p className="line-clamp-4 text-sm leading-relaxed text-slate-500">
+            {card.content.replace(/[#*`>]/g, "").slice(0, 200)}
+            {card.content.length > 200 ? "…" : ""}
+          </p>
         ) : (
           <p className="text-sm text-slate-400">等待智能体产出…</p>
         )}
       </div>
 
       {card.done && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
           <MasterySlider topic={card.topic} />
-          {card.sources.length > 0 && (
-            <span className="text-xs text-slate-400">
-              引用：{card.sources.join("、")}
-            </span>
-          )}
+          <span className="text-xs font-medium text-blue-600">
+            查看详情 →
+          </span>
         </div>
       )}
-
-      {card.done && card.fact_check && (
-        <div className="mt-2 border-t border-slate-100 pt-2">
-          <FactCheckView fc={card.fact_check} />
-        </div>
-      )}
-    </section>
-  );
-}
-
-/** 防幻觉第 3 层展示：事实核查分数 + 可展开的待核声明 */
-function FactCheckView({ fc }: { fc: FactCheckResult }) {
-  const [open, setOpen] = useState(false);
-  const ok = fc.score >= 80;
-  return (
-    <div className="text-xs">
-      <button
-        type="button"
-        onClick={() => fc.flagged.length && setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5"
-      >
-        <span className={ok ? "text-emerald-600" : "text-amber-600"}>
-          🔍 事实核查：{fc.score}%
-        </span>
-        <span className="text-slate-400">
-          （{fc.checked > 0 ? `已核 ${fc.checked} 条` : "无可核声明"}
-          {fc.flagged.length > 0 ? `，${fc.flagged.length} 条待核` : ""}）
-        </span>
-      </button>
-      {open && fc.flagged.length > 0 && (
-        <ul className="mt-1 space-y-0.5 pl-4 text-slate-500">
-          {fc.flagged.map((f, i) => (
-            <li key={i} className="list-disc">未在知识库找到佐证：{f}</li>
-          ))}
-        </ul>
-      )}
-    </div>
+    </Link>
   );
 }
