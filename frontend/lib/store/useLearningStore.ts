@@ -10,6 +10,8 @@ import type {
   TopicProgress,
 } from "@/backend/types";
 
+let profileSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
 interface StatusUpdate {
   agent: string;
   message: string;
@@ -33,6 +35,8 @@ interface LearningStore {
 
   user: { id: string; username: string } | null;
   setUser: (user: { id: string; username: string } | null) => void;
+  syncProfile: () => void;
+  saveRecord: () => Promise<void>;
 
   setProfile: (p: StudentProfile) => void;
   setPath: (p: LearningPath) => void;
@@ -70,7 +74,53 @@ export const useLearningStore = create<LearningStore>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
 
-  setProfile: (p) => set({ profile: p }),
+  syncProfile: () => {
+    if (profileSyncTimer) clearTimeout(profileSyncTimer);
+    profileSyncTimer = setTimeout(async () => {
+      const state = useLearningStore.getState();
+      if (!state.user || !state.profile) return;
+      try {
+        await fetch("/api/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: state.profile }),
+        });
+      } catch {
+        // best-effort
+      }
+    }, 3000);
+  },
+
+  saveRecord: async () => {
+    const state = useLearningStore.getState();
+    if (!state.user) return;
+    const cards = state.resourceOrder
+      .map((id) => state.resourceCards[id])
+      .filter(Boolean);
+    if (cards.length === 0 || !state.path) return;
+    const topic = state.path.steps[0]?.title || "学习记录";
+    try {
+      await fetch("/api/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          path: state.path,
+          resources: cards,
+          progress: state.progress,
+        }),
+      });
+    } catch {
+      // best-effort
+    }
+  },
+
+  setProfile: (p) => {
+    set({ profile: p });
+    if (useLearningStore.getState().user) {
+      useLearningStore.getState().syncProfile();
+    }
+  },
   setPath: (p) => set({ path: p }),
   setStatus: (status) => set({ status }),
   setRunning: (running) => set({ running }),

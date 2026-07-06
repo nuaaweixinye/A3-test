@@ -127,6 +127,7 @@ export function ChatPanel() {
         setTurns((t) =>
           t.map((turn) => (turn.id === assistantId ? { ...turn, done: true } : turn)),
         );
+        useLearningStore.getState().saveRecord();
         break;
     }
   }
