@@ -112,7 +112,7 @@ export function VideoPlayer({ content }: { content: string }) {
     );
   }
 
-  const scene = scenes[current];
+  const scene = scenes[current] ?? scenes[0];
   const progress = ((current + 1) / scenes.length) * 100;
 
   return (
