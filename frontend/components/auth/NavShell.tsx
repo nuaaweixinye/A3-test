@@ -7,9 +7,9 @@ import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
 import { UserMenu } from "./UserMenu";
 
 const NAV_LINKS = [
-  { href: "/", label: "对话" },
+  { href: "/", label: "资源生成" },
   { href: "/profile", label: "画像" },
-  { href: "/learn", label: "学习中心" },
+  { href: "/learn", label: "学习记录" },
   { href: "/tutor", label: "辅导" },
   { href: "/eval", label: "评估" },
 ];
