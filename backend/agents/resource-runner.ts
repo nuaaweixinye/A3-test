@@ -45,7 +45,7 @@ export async function runResourceAgent(
 ): Promise<GeneratedResource> {
   const { task, profile, systemPrompt, buildUserPrompt, emit, temperature = 0.6 } = opts;
 
-  const chunks = searchKnowledge(task.topic, 5);
+  const chunks = await searchKnowledge(task.topic, 5);
   const context = formatContext(chunks);
   const sources = Array.from(new Set(chunks.map((c) => c.source)));
   const id = nanoid();
@@ -74,7 +74,7 @@ export async function runResourceAgent(
   }
 
   // 防幻觉第 3 层：生成完成后事实核查（回查知识库交叉验证）
-  const factCheckResult = factCheck(content, task.topic);
+  const factCheckResult = await factCheck(content, task.topic);
 
   const resource: GeneratedResource = {
     id,

@@ -33,8 +33,6 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-# 运行时 RAG 读取的课程知识库（standalone 不会自动包含，需手动拷贝）
-COPY --from=builder --chown=nextjs:nodejs /app/backend/knowledge_base ./backend/knowledge_base
 
 USER nextjs
 EXPOSE 3000

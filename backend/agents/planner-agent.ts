@@ -56,7 +56,7 @@ export async function planPath(
   profile: StudentProfile,
   request: string,
 ): Promise<PlanResult> {
-  const chunks = searchKnowledge(request, 6);
+  const chunks = await searchKnowledge(request, 6);
   const context = formatContext(chunks);
 
   const userPrompt = `学生画像：

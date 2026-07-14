@@ -21,7 +21,7 @@ export async function* answerTutorStream(opts: {
   profile: StudentProfile | null;
 }): AsyncGenerator<string, void, unknown> {
   const { question, history, profile } = opts;
-  const chunks = searchKnowledge(question, 5);
+  const chunks = await searchKnowledge(question, 5);
   const context = formatContext(chunks);
 
   const historyMsgs: ChatMsg[] = history.slice(-6).map((t) => ({
