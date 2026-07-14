@@ -34,56 +34,67 @@ function LoginForm() {
     }
 
     setLoading(true);
-    const res = await fetch(`/api/auth/${mode}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setError(data.error || "操作失败");
-      return;
-    }
-
-    setUser(data.user);
-
     try {
-      const [profileRes, recordsRes] = await Promise.all([
-        fetch("/api/profile"),
-        fetch("/api/records"),
-      ]);
-      const profileData = await profileRes.json();
-      const recordsData = await recordsRes.json();
+      const res = await fetch(`/api/auth/${mode}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
 
-      if (profileData.profile) {
-        useLearningStore.getState().setProfile(profileData.profile);
+      if (!res.ok) {
+        setError(data.error || "操作失败");
+        setLoading(false);
+        return;
       }
-      if (recordsData.records?.length > 0) {
-        const latest = recordsData.records[0];
-        if (latest.path) useLearningStore.getState().setPath(latest.path);
-        if (latest.progress)
-          useLearningStore.setState({ progress: latest.progress });
-        if (latest.resources) {
-          const cards: Record<string, typeof latest.resources[0]> = {};
-          const order: string[] = [];
-          for (const r of latest.resources) {
-            cards[r.id] = { ...r, done: true };
-            order.push(r.id);
-          }
-          useLearningStore.setState({
-            resourceCards: cards,
-            resourceOrder: order,
-          });
+
+      setUser(data.user);
+
+      try {
+        const [profileRes, recordsRes] = await Promise.all([
+          fetch("/api/profile"),
+          fetch("/api/records"),
+        ]);
+        const profileData = await profileRes.json();
+        const recordsData = await recordsRes.json();
+
+        if (profileData.profile) {
+          useLearningStore.getState().setProfile(profileData.profile);
         }
+        if (recordsData.records?.length > 0) {
+          const latest = recordsData.records[0];
+          if (latest.path) useLearningStore.getState().setPath(latest.path);
+          if (latest.progress)
+            useLearningStore.setState({ progress: latest.progress });
+          if (latest.resources) {
+            const cards: Record<string, typeof latest.resources[0]> = {};
+            const order: string[] = [];
+            for (const r of latest.resources) {
+              cards[r.id] = { ...r, done: true };
+              order.push(r.id);
+            }
+            useLearningStore.setState({
+              resourceCards: cards,
+              resourceOrder: order,
+            });
+          }
+        }
+      } catch {
+        // Profile/record loading is best-effort
       }
-    } catch {
-      // Profile/record loading is best-effort
-    }
 
-    const from = searchParams.get("from") || "/";
-    router.push(from);
+      const from = searchParams.get("from") || "/";
+      router.push(from);
+    } catch (err) {
+      console.error("Auth error:", err);
+      setError(
+        err instanceof Error
+          ? `网络错误：${err.message}`
+          : "请求失败，请检查网络后重试",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

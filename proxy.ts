@@ -9,7 +9,7 @@ const SECRET = new TextEncoder().encode(
 
 const PROTECTED_PREFIXES = ["/learn", "/profile", "/tutor", "/eval"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isProtected = PROTECTED_PREFIXES.some(
