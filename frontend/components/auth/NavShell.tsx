@@ -39,7 +39,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             <span className="inline-block h-7 w-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600" />
             <span>智学多智能体</span>
             <span className="hidden text-xs font-normal text-slate-400 sm:inline">
-              A3 · 数据结构与算法
+              个性化学习 · 多智能体协同
             </span>
           </Link>
           <div className="flex items-center gap-1 text-sm">

@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `你是一名学习画像分析专家。基于学生的对
 }
 规则：
 1. 共 6 个维度，必须全部输出。
-2. knowledge_level 的 key 用简短中文知识点名（如 "数组"、"排序"），value 为掌握程度（0=完全不会，100=精通）。
+2. knowledge_level 的 key 用简短中文知识点名（如 "基础概念"、"核心原理"），value 为掌握程度（0=完全不会，100=精通）。
 3. 若信息不足以判断某维度，给出合理默认值：knowledge_level 为 {}、cognitive_style 为 "visual"、error_patterns 与 interests 为 []、learning_goal 为 "interest"、learning_pace 为 "medium"。
 4. 若提供了"当前画像历史"，应在其基础上增量更新，而非完全推翻。`;
 

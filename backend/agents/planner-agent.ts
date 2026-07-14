@@ -86,7 +86,7 @@ ${request}
   const primaryTopic =
         (parsed?.primary_topic && String(parsed.primary_topic).trim()) ||
     request.slice(0, 30) ||
-    "数据结构与算法";
+    "综合学习";
   const resourceTasks = ensureAllTypes(parsed?.resource_tasks, primaryTopic);
 
   return { path, primaryTopic, resourceTasks };

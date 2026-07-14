@@ -25,9 +25,9 @@ const RESOURCE_LABEL: Record<ResourceType, string> = {
 };
 
 const SUGGESTIONS = [
-  "我是零基础，想学数据结构与算法，备战期末考试",
-  "我对排序算法不太懂，能帮我梳理一下吗？",
-  "我学过数组链表，现在想深入二叉树和递归",
+  "我是零基础，想学Python编程，目标是能独立开发小项目",
+  "我想系统复习高等数学中的微积分，备战考研",
+  "我对计算机网络不太懂，能帮我梳理一下TCP/IP吗？",
 ];
 
 export function ChatPanel() {
@@ -215,7 +215,7 @@ export function ChatPanel() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="例如：我想学二叉树，目标是面试…"
+          placeholder="例如：我想学Python编程，目标是能独立开发…"
           className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
         <button

@@ -18,7 +18,7 @@ import { nanoid } from "nanoid";
 export type Emitter = (event: AgentEvent) => void;
 
 /** 所有资源 Agent 共享的防幻觉与个性化规则（第 2 层 Prompt 约束 + 第 4 层引用要求） */
-export const ANTI_HALLUCINATION_RULES = `你是一名高校"数据结构与算法"课程的内容生成助教，严格遵循：
+export const ANTI_HALLUCINATION_RULES = `你是一名高校课程的内容生成助教，严格遵循：
 1.【知识来源】仅基于提供的【知识库内容】生成，不得编造知识库中不存在的信息。
 2.【不确定声明】若信息不足以覆盖某点，请写明：「（当前知识库中暂无此内容，建议查阅教材补充）」。
 3.【引用来源】关键结论后标注来源，格式：「（参考：知识库 · 来源名）」。
