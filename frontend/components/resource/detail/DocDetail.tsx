@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -12,6 +12,8 @@ interface TocItem {
 
 export function DocDetail({ content }: { content: string }) {
   const [progress, setProgress] = useState(0);
+  const [activeId, setActiveId] = useState<string>("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const toc = useMemo<TocItem[]>(() => {
     const lines = content.split("\n");
@@ -28,11 +30,44 @@ export function DocDetail({ content }: { content: string }) {
     return items;
   }, [content]);
 
+  const scrollToId = useCallback((id: string) => {
+    const el = scrollRef.current?.querySelector(`#${CSS.escape(id)}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveId(id);
+    }
+  }, []);
+
   function onScroll(e: React.UIEvent<HTMLDivElement>) {
     const el = e.currentTarget;
     const max = el.scrollHeight - el.clientHeight;
     setProgress(max > 0 ? Math.round((el.scrollTop / max) * 100) : 100);
   }
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || toc.length === 0) return;
+
+    const headings = toc
+      .map((t) => container.querySelector(`#${CSS.escape(t.id)}`))
+      .filter(Boolean) as Element[];
+
+    if (headings.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveId(entry.target.id);
+          }
+        }
+      },
+      { root: container, rootMargin: "-10% 0px -80% 0px", threshold: 0 },
+    );
+
+    headings.forEach((h) => observer.observe(h));
+    return () => observer.disconnect();
+  }, [toc]);
 
   return (
     <div className="grid gap-4 md:grid-cols-[200px_1fr]">
@@ -45,12 +80,17 @@ export function DocDetail({ content }: { content: string }) {
                 key={item.id}
                 className={item.level === 3 ? "ml-3" : ""}
               >
-                <a
-                  href={`#${item.id}`}
-                  className="text-xs text-slate-500 transition hover:text-blue-600"
+                <button
+                  type="button"
+                  onClick={() => scrollToId(item.id)}
+                  className={`text-left text-xs transition ${
+                    activeId === item.id
+                      ? "font-medium text-blue-600"
+                      : "text-slate-500 hover:text-blue-600"
+                  }`}
                 >
                   {item.text}
-                </a>
+                </button>
               </li>
             ))}
           </ul>
@@ -67,6 +107,7 @@ export function DocDetail({ content }: { content: string }) {
       )}
 
       <div
+        ref={scrollRef}
         onScroll={onScroll}
         className="doc-view max-h-[70vh] overflow-y-auto pr-2"
       >

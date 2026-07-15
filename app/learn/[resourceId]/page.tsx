@@ -53,7 +53,7 @@ function DetailContent({ card }: { card: ResourceCardState }) {
     case "doc":
       return <DocDetail content={card.content} />;
     case "quiz":
-      return <QuizDetail content={card.content} />;
+      return <QuizDetail content={card.content} topic={card.topic} />;
     case "mindmap":
       return <MindmapDetail content={card.content} />;
     case "video":
@@ -61,7 +61,7 @@ function DetailContent({ card }: { card: ResourceCardState }) {
     case "code":
       return <CodeDetail content={card.content} />;
     case "reading":
-      return <ReadingDetail content={card.content} />;
+      return <ReadingDetail content={card.content} topic={card.topic} />;
     default:
       return <DocDetail content={card.content} />;
   }

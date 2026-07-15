@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
 
 interface ReadingItem {
   title: string;
@@ -39,7 +40,7 @@ function parseReadingItems(content: string): ReadingItem[] {
   return items;
 }
 
-export function ReadingDetail({ content }: { content: string }) {
+export function ReadingDetail({ content, topic }: { content: string; topic: string }) {
   const items = parseReadingItems(content);
   const [readSet, setReadSet] = useState<Set<number>>(new Set());
 
@@ -73,7 +74,10 @@ export function ReadingDetail({ content }: { content: string }) {
         >
           <button
             type="button"
-            onClick={() => toggleRead(i)}
+            onClick={() => {
+              toggleRead(i);
+              useLearningStore.getState().markViewed(topic);
+            }}
             className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs transition ${
               readSet.has(i)
                 ? "border-emerald-500 bg-emerald-500 text-white"

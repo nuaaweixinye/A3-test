@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
 
 interface QuizQuestion {
   prompt: string;
@@ -79,7 +80,7 @@ function parseQuiz(content: string): QuizQuestion[] {
   return questions;
 }
 
-export function QuizDetail({ content }: { content: string }) {
+export function QuizDetail({ content, topic }: { content: string; topic: string }) {
   const questions = parseQuiz(content);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -184,7 +185,14 @@ export function QuizDetail({ content }: { content: string }) {
       {!submitted && total > 0 && (
         <button
           type="button"
-          onClick={() => setSubmitted(true)}
+          onClick={() => {
+            setSubmitted(true);
+            const sc = questions.filter(
+              (q, i) => q.answerIndex >= 0 && answers[i] === q.answerIndex,
+            ).length;
+            const pct = total > 0 ? Math.round((sc / total) * 100) : 0;
+            useLearningStore.getState().setMastery(topic, pct);
+          }}
           className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
         >
           提交答案

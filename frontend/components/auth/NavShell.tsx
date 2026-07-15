@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
+import { ToastProvider } from "@/frontend/components/ui/Toast";
 import { UserMenu } from "./UserMenu";
 
 const NAV_LINKS = [
@@ -21,18 +22,56 @@ export function NavShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setUser(data.user);
+      .then(async (data) => {
+        if (!data.user) return;
+        setUser(data.user);
+
+        const state = useLearningStore.getState();
+
+        if (!state.profile) {
+          try {
+            const profileRes = await fetch("/api/profile");
+            const profileData = await profileRes.json();
+            if (profileData.profile) {
+              useLearningStore.setState({ profile: profileData.profile });
+            }
+          } catch {}
+        }
+
+        if (state.resourceOrder.length === 0) {
+          try {
+            const recordsRes = await fetch("/api/records");
+            const recordsData = await recordsRes.json();
+            if (recordsData.records?.length > 0) {
+              const latest = recordsData.records[0];
+              if (latest.path) useLearningStore.setState({ path: latest.path });
+              if (latest.progress)
+                useLearningStore.setState({ progress: latest.progress });
+              if (latest.resources) {
+                const cards: Record<string, typeof latest.resources[0]> = {};
+                const order: string[] = [];
+                for (const r of latest.resources) {
+                  cards[r.id] = { ...r, done: true };
+                  order.push(r.id);
+                }
+                useLearningStore.setState({
+                  resourceCards: cards,
+                  resourceOrder: order,
+                });
+              }
+            }
+          } catch {}
+        }
       })
       .catch(() => {});
   }, [setUser]);
 
   if (pathname === "/login") {
-    return <>{children}</>;
+    return <ToastProvider>{children}</ToastProvider>;
   }
 
   return (
-    <>
+    <ToastProvider>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -74,6 +113,6 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         多智能体协同框架：LangGraph.js · 大模型：科大讯飞星火 · 架构参考
         THU-MAIC/OpenMAIC (MIT)
       </footer>
-    </>
+    </ToastProvider>
   );
 }

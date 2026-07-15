@@ -9,6 +9,7 @@ import type {
   ResourceCardState,
   TopicProgress,
 } from "@/backend/types";
+import { showToast } from "@/frontend/components/ui/Toast";
 
 let profileSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -86,7 +87,7 @@ export const useLearningStore = create<LearningStore>((set) => ({
           body: JSON.stringify({ profile: state.profile }),
         });
       } catch {
-        // best-effort
+        showToast("画像同步失败，请检查网络", "error");
       }
     }, 3000);
   },
@@ -111,7 +112,7 @@ export const useLearningStore = create<LearningStore>((set) => ({
         }),
       });
     } catch {
-      // best-effort
+      showToast("学习记录保存失败", "error");
     }
   },
 

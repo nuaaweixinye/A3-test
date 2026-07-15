@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
 
 interface Scene {
   narration: string;
@@ -123,7 +124,7 @@ export function VideoPlayer({ content }: { content: string }) {
           <div
             key={current}
             className="w-full max-w-md [&_svg]:h-auto [&_svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: scene.svg }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(scene.svg, { ADD_TAGS: ["style"], ADD_ATTR: ["class", "style"] }) }}
           />
         ) : (
           <span className="text-sm text-slate-500">（该分镜无图形内容）</span>
