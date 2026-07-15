@@ -79,6 +79,23 @@ export function ChatPanel() {
 
     await streamLearning(trimmed, {
       onEvent: (e: AgentEvent) => handleEvent(e, assistantId),
+      onError: (err) => {
+        setError(err.message);
+        setRunning(false);
+        setStatus(null);
+        setTurns((t) =>
+          t.map((turn) =>
+            turn.id === assistantId ? { ...turn, done: true } : turn,
+          ),
+        );
+      },
+      onClose: () => {
+        setTurns((t) =>
+          t.map((turn) =>
+            turn.id === assistantId ? { ...turn, done: true } : turn,
+          ),
+        );
+      },
     });
     setRunning(false);
     setStatus(null);

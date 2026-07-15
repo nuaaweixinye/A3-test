@@ -21,7 +21,10 @@ export async function streamLearning(
       signal,
     });
   } catch (e) {
-    if ((e as Error).name === "AbortError") return;
+    if ((e as Error).name === "AbortError") {
+      handlers.onClose?.();
+      return;
+    }
     handlers.onError?.(e as Error);
     return;
   }
@@ -49,7 +52,10 @@ export async function streamLearning(
     }
     handlers.onClose?.();
   } catch (e) {
-    if ((e as Error).name === "AbortError") return;
+    if ((e as Error).name === "AbortError") {
+      handlers.onClose?.();
+      return;
+    }
     handlers.onError?.(e as Error);
   }
 }
@@ -64,10 +70,38 @@ function parseSseBlock(block: string): AgentEvent | null {
   if (!type) return null;
   try {
     const parsed = JSON.parse(dataStr);
-    // data 已包含 type 字段；以 event 行为准并合并其余字段
-    return { ...parsed, type } as AgentEvent;
+    const event = { ...parsed, type };
+    if (!validateAgentEvent(event)) return null;
+    return event as AgentEvent;
   } catch {
     return null;
+  }
+}
+
+function validateAgentEvent(e: { type: string; [k: string]: unknown }): boolean {
+  switch (e.type) {
+    case "status":
+      return typeof e.agent === "string" && typeof e.message === "string";
+    case "profile":
+      return e.profile != null && typeof e.profile === "object";
+    case "path":
+      return e.path != null && typeof e.path === "object";
+    case "resource_start":
+      return (
+        typeof e.id === "string" &&
+        typeof e.resType === "string" &&
+        typeof e.title === "string" &&
+        typeof e.topic === "string"
+      );
+    case "resource_delta":
+      return typeof e.id === "string" && typeof e.text === "string";
+    case "resource":
+      return e.resource != null && typeof e.resource === "object";
+    case "done":
+    case "error":
+      return true;
+    default:
+      return false;
   }
 }
 

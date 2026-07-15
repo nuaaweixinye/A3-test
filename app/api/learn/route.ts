@@ -6,7 +6,7 @@
 // profile/path 仍由 graph.stream 的 updates 翻译得到。
 
 import { runLearningLoop } from "@/backend/graph";
-import type { AgentEvent } from "@/backend/types";
+import type { AgentEvent, StudentProfile, LearningPath } from "@/backend/types";
 import { isMockMode } from "@/backend/ai/spark";
 import type { Emitter } from "@/backend/agents/resource-runner";
 
@@ -60,9 +60,9 @@ export async function POST(req: Request) {
           for (const [node, delta] of Object.entries(update)) {
             if (!delta) continue;
             if (node === "profile_builder" && delta.profile) {
-              emit({ type: "profile", profile: delta.profile as never });
+              emit({ type: "profile", profile: delta.profile as StudentProfile });
             } else if (node === "path_planner" && delta.path) {
-              emit({ type: "path", path: delta.path as never });
+              emit({ type: "path", path: delta.path as LearningPath });
             }
             // 资源节点(*_gen)的事件已由 emit 直接推送，此处无需重复处理
           }
