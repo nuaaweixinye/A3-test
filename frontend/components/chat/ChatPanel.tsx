@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { nanoid } from "nanoid";
-import { streamLearning } from "@/frontend/lib/sse-client";
+import { startLearning } from "@/frontend/lib/stream-manager";
 import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
-import type { AgentEvent, ResourceType } from "@/backend/types";
+import type { ResourceType } from "@/backend/types";
 
 interface Turn {
   id: string;
@@ -34,32 +34,18 @@ export function ChatPanel() {
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
 
-  const {
-    profile,
-    path,
-    status,
-    running,
-    error,
-    setProfile,
-    setPath,
-    setStatus,
-    setRunning,
-    setError,
-    onResourceStart,
-    onResourceDelta,
-    upsertResource,
-    resetResources,
-  } = useLearningStore();
+  const running = useLearningStore((s) => s.running);
+  const status = useLearningStore((s) => s.status);
+  const error = useLearningStore((s) => s.error);
+  const profile = useLearningStore((s) => s.profile);
+  const path = useLearningStore((s) => s.path);
+  const resourceOrder = useLearningStore((s) => s.resourceOrder);
 
   async function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || running) return;
 
     setInput("");
-    setError(null);
-    resetResources();
-    setRunning(true);
-    setStatus({ agent: "system", message: "多智能体闭环启动中…" });
 
     const userTurn: Turn = {
       id: `u-${nanoid()}`,
@@ -77,83 +63,25 @@ export function ChatPanel() {
     };
     setTurns((t) => [...t, userTurn, assistantTurn]);
 
-    await streamLearning(trimmed, {
-      onEvent: (e: AgentEvent) => handleEvent(e, assistantId),
-      onError: (err) => {
-        setError(err.message);
-        setRunning(false);
-        setStatus(null);
-        setTurns((t) =>
-          t.map((turn) =>
-            turn.id === assistantId ? { ...turn, done: true } : turn,
-          ),
-        );
-      },
-      onClose: () => {
-        setTurns((t) =>
-          t.map((turn) =>
-            turn.id === assistantId ? { ...turn, done: true } : turn,
-          ),
-        );
-      },
-    });
-    setRunning(false);
-    setStatus(null);
+    await startLearning(trimmed);
+
+    setTurns((t) =>
+      t.map((turn) =>
+        turn.id === assistantId ? { ...turn, done: true } : turn,
+      ),
+    );
   }
 
-  function handleEvent(e: AgentEvent, assistantId: string) {
-    switch (e.type) {
-      case "status":
-        setStatus({ agent: e.agent, message: e.message });
-        break;
-      case "profile":
-        setProfile(e.profile);
-        break;
-      case "path":
-        setPath(e.path);
-        break;
-      case "resource_start":
-        onResourceStart({
-          id: e.id,
-          resType: e.resType,
-          title: e.title,
-          topic: e.topic,
-        });
-        setTurns((t) =>
-          t.map((turn) =>
-            turn.id === assistantId && !turn.started.includes(e.resType)
-              ? { ...turn, started: [...turn.started, e.resType] }
-              : turn,
-          ),
-        );
-        break;
-      case "resource_delta":
-        onResourceDelta(e.id, e.text);
-        break;
-      case "resource":
-        upsertResource(e.resource);
-        break;
-      case "error":
-        setError(e.message);
-        setRunning(false);
-        setTurns((t) =>
-          t.map((turn) => (turn.id === assistantId ? { ...turn, done: true } : turn)),
-        );
-        break;
-      case "done":
-        setTurns((t) =>
-          t.map((turn) => (turn.id === assistantId ? { ...turn, done: true } : turn)),
-        );
-        useLearningStore.getState().saveRecord();
-        break;
-    }
+  const startedTypes = new Set<ResourceType>();
+  for (const id of resourceOrder) {
+    const card = useLearningStore.getState().resourceCards[id];
+    if (card) startedTypes.add(card.resType);
   }
 
   return (
     <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {/* 对话区 */}
       <div className="flex-1 space-y-4 overflow-y-auto p-5 max-h-[54vh] min-h-[280px]">
-        {turns.length === 0 && (
+        {turns.length === 0 && !running && (
           <div className="flex h-full min-h-[240px] flex-col items-center justify-center text-center">
             <p className="text-slate-500">
               告诉我你的<strong>专业背景、学习目标与薄弱点</strong>，多智能体系统将为你构建画像、规划路径，并<strong>并行生成 6 种学习资源</strong>。
@@ -172,6 +100,15 @@ export function ChatPanel() {
           </div>
         )}
 
+        {turns.length === 0 && running && (
+          <div className="flex h-full min-h-[240px] flex-col items-center justify-center text-center">
+            <span className="inline-flex gap-1 text-slate-400">
+              <Dot /> <Dot /> <Dot />
+              <span className="ml-2 text-xs">多智能体协同生成中…切换页面不影响生成进度</span>
+            </span>
+          </div>
+        )}
+
         {turns.map((turn) =>
           turn.role === "user" ? (
             <div key={turn.id} className="flex justify-end">
@@ -180,12 +117,15 @@ export function ChatPanel() {
               </div>
             </div>
           ) : (
-            <AssistantBubble key={turn.id} turn={turn} />
+            <AssistantBubble
+              key={turn.id}
+              turn={turn}
+              startedTypes={startedTypes}
+            />
           ),
         )}
       </div>
 
-      {/* 状态条 */}
       {(status || error) && (
         <div className="border-t border-slate-100 px-5 py-2 text-xs">
           {error ? (
@@ -199,7 +139,6 @@ export function ChatPanel() {
         </div>
       )}
 
-      {/* 结果入口 */}
       {(profile || path) && (
         <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-2.5">
           {profile && (
@@ -221,7 +160,6 @@ export function ChatPanel() {
         </div>
       )}
 
-      {/* 输入区 */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -247,14 +185,20 @@ export function ChatPanel() {
   );
 }
 
-function AssistantBubble({ turn }: { turn: Turn }) {
+function AssistantBubble({
+  turn,
+  startedTypes,
+}: {
+  turn: Turn;
+  startedTypes: Set<ResourceType>;
+}) {
   const running = !turn.done;
-  const count = turn.started.length;
+  const types = Array.from(startedTypes);
 
   return (
     <div className="flex justify-start">
       <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-slate-50 px-4 py-3 text-slate-800">
-        {running && count === 0 ? (
+        {running && types.length === 0 ? (
           <span className="inline-flex gap-1 text-slate-400">
             <Dot /> <Dot /> <Dot />
             <span className="ml-2 text-xs">多智能体协同启动中…</span>
@@ -262,10 +206,10 @@ function AssistantBubble({ turn }: { turn: Turn }) {
         ) : (
           <div className="space-y-2">
             <div className="text-sm">
-              多智能体正在为你协同生成 <strong>{count || 6}</strong> 种学习资源：
+              多智能体正在为你协同生成 <strong>{types.length || 6}</strong> 种学习资源：
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {turn.started.map((t) => (
+              {types.map((t) => (
                 <span
                   key={t}
                   className="animate-[pulse_1s_ease-in-out_1] rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 ring-1 ring-slate-200"
@@ -279,12 +223,12 @@ function AssistantBubble({ turn }: { turn: Turn }) {
                 </span>
               )}
             </div>
-            {turn.done && count > 0 && (
+            {turn.done && types.length > 0 && (
               <Link
                 href="/learn"
                 className="inline-block rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
               >
-                ✓ 已生成 {count} 种资源 → 前往学习中心
+                ✓ 已生成 {types.length} 种资源 → 前往学习记录
               </Link>
             )}
           </div>
