@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
 import { EvalRadar } from "@/frontend/components/eval/EvalRadar";
 import type { EvaluationResult } from "@/backend/types";
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+
+interface EvalHistoryItem {
+  id: string;
+  overallScore: number;
+  createdAt: string;
+}
 
 const TREND_LABEL = {
   improving: "稳步提升",
@@ -30,6 +39,24 @@ export default function EvalPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
+  const [history, setHistory] = useState<EvalHistoryItem[]>([]);
+
+  async function refreshHistory() {
+    try {
+      const res = await fetch("/api/eval/history");
+      const data = await res.json();
+      setHistory(data.history || []);
+    } catch {}
+  }
+
+  useEffect(() => {
+    fetch("/api/eval/history")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.history) setHistory(data.history);
+      })
+      .catch(() => {});
+  }, []);
 
   const topics = Array.from(
     new Set(
@@ -52,6 +79,7 @@ export default function EvalPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as EvaluationResult;
       setReport(data);
+      refreshHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -102,6 +130,51 @@ export default function EvalPage() {
           {loading ? "评估中…" : report ? "重新评估" : "生成评估报告"}
         </button>
       </header>
+
+      {history.length > 0 && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700">
+            评估趋势 · 共 {history.length} 次记录
+          </h2>
+          <ReactECharts
+            style={{ height: "200px" }}
+            option={{
+              tooltip: { trigger: "axis" },
+              grid: { left: 30, right: 20, top: 10, bottom: 30 },
+              xAxis: {
+                type: "category",
+                data: history
+                  .slice()
+                  .reverse()
+                  .map((h) => {
+                    const d = new Date(h.createdAt);
+                    return `${d.getMonth() + 1}/${d.getDate()}`;
+                  }),
+                axisLabel: { fontSize: 11 },
+              },
+              yAxis: {
+                type: "value",
+                min: 0,
+                max: 100,
+                axisLabel: { fontSize: 11 },
+              },
+              series: [
+                {
+                  type: "line",
+                  smooth: true,
+                  data: history
+                    .slice()
+                    .reverse()
+                    .map((h) => h.overallScore),
+                  itemStyle: { color: "#059669" },
+                  areaStyle: { opacity: 0.1 },
+                  symbolSize: 6,
+                },
+              ],
+            }}
+          />
+        </section>
+      )}
 
       {error && (
         <div className="rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-600">

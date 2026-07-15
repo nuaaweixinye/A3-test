@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/learn", label: "学习记录" },
   { href: "/tutor", label: "辅导" },
   { href: "/eval", label: "评估" },
+  { href: "/knowledge", label: "知识库" },
 ];
 
 export function NavShell({ children }: { children: React.ReactNode }) {
