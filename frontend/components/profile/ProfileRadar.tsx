@@ -3,17 +3,14 @@
 import { useEffect, useRef } from "react";
 import type { StudentProfile } from "@/backend/types";
 
-/**
- * 学生画像雷达图（6 轴对应赛题要求的 6 个画像维度）
- * 采用动态 import echarts，确保仅在浏览器端初始化，避免 SSR 报错。
- */
 export function ProfileRadar({ profile }: { profile: StudentProfile | null }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ref.current || !profile) return;
+
     let chart: {
-      setOption: (o: unknown) => void;
+      setOption: (option: unknown) => void;
       resize: () => void;
       dispose: () => void;
     } | null = null;
@@ -23,7 +20,7 @@ export function ProfileRadar({ profile }: { profile: StudentProfile | null }) {
       const echarts = await import("echarts");
       if (disposed || !ref.current) return;
       chart = echarts.init(ref.current) as unknown as {
-        setOption: (o: unknown) => void;
+        setOption: (option: unknown) => void;
         resize: () => void;
         dispose: () => void;
       };
@@ -42,8 +39,8 @@ export function ProfileRadar({ profile }: { profile: StudentProfile | null }) {
 
   if (!profile) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-xl border border-dashed text-sm text-slate-400">
-        暂无画像数据，先在首页发起一次学习对话吧
+      <div className="flex h-72 items-center justify-center rounded-xl border border-dashed border-slate-300 text-sm text-slate-400">
+        暂无画像数据，先在首页发起一次学习对话。
       </div>
     );
   }
@@ -53,18 +50,25 @@ export function ProfileRadar({ profile }: { profile: StudentProfile | null }) {
 
 function buildOption(profile: StudentProfile) {
   const values = profileToRadarValues(profile);
+
   return {
+    color: ["#2563eb"],
+    tooltip: {},
     radar: {
       indicator: [
         { name: "知识基础", max: 100 },
         { name: "兴趣广度", max: 100 },
-        { name: "目标明确", max: 100 },
+        { name: "目标清晰", max: 100 },
         { name: "节奏适配", max: 100 },
-        { name: "风格清晰", max: 100 },
-        { name: "易错关注", max: 100 },
+        { name: "风格明确", max: 100 },
+        { name: "错因识别", max: 100 },
       ],
-      shape: "polygon" as const,
+      radius: "68%",
       splitNumber: 4,
+      axisName: { color: "#475569", fontSize: 12 },
+      splitLine: { lineStyle: { color: "#e2e8f0" } },
+      splitArea: { areaStyle: { color: ["#ffffff", "#f8fafc"] } },
+      axisLine: { lineStyle: { color: "#cbd5e1" } },
     },
     series: [
       {
@@ -73,9 +77,9 @@ function buildOption(profile: StudentProfile) {
           {
             value: values,
             name: "学习画像",
-            areaStyle: { color: "rgba(37,99,235,0.25)" },
-            lineStyle: { color: "#2563eb" },
-            itemStyle: { color: "#2563eb" },
+            areaStyle: { color: "rgba(37, 99, 235, 0.18)" },
+            lineStyle: { width: 2 },
+            symbolSize: 5,
           },
         ],
       },
@@ -83,22 +87,24 @@ function buildOption(profile: StudentProfile) {
   };
 }
 
-/** 把 6 维画像映射为雷达图 0~100 的可量化数值（均为派生指标） */
-function profileToRadarValues(p: StudentProfile): number[] {
-  const knowledgeVals = Object.values(p.knowledge_level || {});
-  const knowledgeAvg = knowledgeVals.length
-    ? Math.round(knowledgeVals.reduce((a, b) => a + b, 0) / knowledgeVals.length)
+function profileToRadarValues(profile: StudentProfile): number[] {
+  const knowledgeValues = Object.values(profile.knowledge_level || {});
+  const knowledgeAvg = knowledgeValues.length
+    ? Math.round(knowledgeValues.reduce((sum, value) => sum + value, 0) / knowledgeValues.length)
     : 0;
-  const goalScore = { exam: 90, project: 85, research: 80, interest: 60 }[
-    p.learning_goal
+  const goalScore = { exam: 92, project: 88, research: 86, interest: 68 }[
+    profile.learning_goal
   ];
-  const paceScore = { fast: 75, medium: 90, slow: 60 }[p.learning_pace];
+  const paceScore = { fast: 76, medium: 92, slow: 72 }[profile.learning_pace];
+  const styleScore = profile.cognitive_style ? 86 : 35;
+  const errorScore = Math.min((profile.error_patterns?.length || 0) * 22, 100);
+
   return [
     knowledgeAvg,
-    Math.min((p.interests?.length || 0) * 20, 100),
+    Math.min((profile.interests?.length || 0) * 18, 100),
     goalScore,
     paceScore,
-    75,
-    Math.min((p.error_patterns?.length || 0) * 25, 100),
+    styleScore,
+    errorScore,
   ];
 }

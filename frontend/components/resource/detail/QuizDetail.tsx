@@ -1,102 +1,112 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
 
 interface QuizQuestion {
   prompt: string;
   options: string[];
-  answerIndex: number; // -1 if not multiple choice
+  answerIndex: number;
   answerText: string;
   explanation: string;
 }
 
 function parseQuiz(content: string): QuizQuestion[] {
-  const questions: QuizQuestion[] = [];
-  // Split by ### 第X题 or ### 题X or ### Q
-  const blocks = content.split(/^###\s+/m).filter((b) => b.includes("题") || b.includes("Q"));
-  
-  for (const block of blocks) {
-    const lines = block.split("\n");
-    const promptLines: string[] = [];
-    const options: string[] = [];
-    let answerIndex = -1;
-    let answerText = "";
-    let explanation = "";
-    let inExplanation = false;
+  const normalized = content.replace(/\r\n/g, "\n");
+  const blocks = normalized
+    .split(/^##\s+/m)
+    .filter((block) => /题|Question|Q\d+/i.test(block.slice(0, 80)));
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
+  return blocks
+    .map(parseQuestionBlock)
+    .filter((question) => question.prompt || question.options.length > 0);
+}
 
-      // Option: A. B. C. D. or A) B) etc
-      const optMatch = trimmed.match(/^([A-D])[.、)]\s*(.+)/);
-      if (optMatch) {
-        const idx = "ABCD".indexOf(optMatch[1]);
-        options[idx] = optMatch[2];
-        continue;
-      }
+function parseQuestionBlock(block: string): QuizQuestion {
+  const lines = block.split("\n");
+  const heading = lines.shift()?.trim() ?? "";
+  const promptLines: string[] = [];
+  const options: string[] = [];
+  let answerIndex = -1;
+  let answerText = "";
+  let explanation = "";
+  let collectingExplanation = false;
 
-      // Answer line
-      const ansMatch = trimmed.match(/\*?\*?答案\*?\*?[：:]\s*([A-D]+)/);
-      if (ansMatch) {
-        answerIndex = "ABCD".indexOf(ansMatch[1][0]);
-        continue;
-      }
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === "---") continue;
 
-      const ansTextMatch = trimmed.match(/\*?\*?答案\*?\*?[：:]\s*(.+)/);
-      if (ansTextMatch && answerIndex === -1) {
-        answerText = ansTextMatch[1];
-        continue;
-      }
-
-      // Explanation
-      const expMatch = trimmed.match(/\*?\*?解析\*?\*?[：:]\s*(.*)/);
-      if (expMatch) {
-        explanation = expMatch[1];
-        inExplanation = true;
-        continue;
-      }
-
-      if (inExplanation) {
-        explanation += " " + trimmed;
-      } else if (options.length === 0 && !trimmed.startsWith("**答案") && !trimmed.startsWith("**解析")) {
-        promptLines.push(trimmed);
-      }
+    const optionMatch = trimmed.match(/^[-*]?\s*([A-D])[\.\、．]\s*(.+)$/i);
+    if (optionMatch) {
+      const index = "ABCD".indexOf(optionMatch[1].toUpperCase());
+      options[index] = optionMatch[2].trim();
+      collectingExplanation = false;
+      continue;
     }
 
-    if (promptLines.length > 0 || options.length > 0) {
-      questions.push({
-        prompt: promptLines.join(" ").replace(/^第\d+题\s*/, "").replace(/^题\d+\s*/, ""),
-        options: options.filter(Boolean),
-        answerIndex,
-        answerText,
-        explanation,
-      });
+    const promptMatch = trimmed.match(/^\*?\*?题目\*?\*?\s*[:：]\s*(.+)$/);
+    if (promptMatch) {
+      promptLines.push(promptMatch[1].trim());
+      collectingExplanation = false;
+      continue;
+    }
+
+    const answerMatch = trimmed.match(/^\>?\s*\*?\*?(答案|参考答案|答案要点)\*?\*?\s*[:：]\s*(.+)$/);
+    if (answerMatch) {
+      answerText = answerMatch[2].trim();
+      const choice = answerText.match(/[A-D]/i);
+      if (choice) answerIndex = "ABCD".indexOf(choice[0].toUpperCase());
+      collectingExplanation = false;
+      continue;
+    }
+
+    const explanationMatch = trimmed.match(/^\>?\s*\*?\*?解析\*?\*?\s*[:：]\s*(.*)$/);
+    if (explanationMatch) {
+      explanation = explanationMatch[1].trim();
+      collectingExplanation = true;
+      continue;
+    }
+
+    if (collectingExplanation) {
+      explanation += explanation ? ` ${trimmed.replace(/^>\s*/, "")}` : trimmed;
+    } else if (!trimmed.startsWith(">")) {
+      promptLines.push(trimmed.replace(/^\*+|\*+$/g, ""));
     }
   }
 
-  // Fallback: if no structured questions parsed, show raw content
-  return questions;
+  const prompt =
+    promptLines.join(" ").trim() ||
+    heading.replace(/^(单选题|填空题|简答题|综合题|编程题|实操题)\s*\d*/i, "").trim();
+
+  return {
+    prompt,
+    options: options.filter(Boolean),
+    answerIndex,
+    answerText,
+    explanation,
+  };
 }
 
 export function QuizDetail({ content, topic }: { content: string; topic: string }) {
-  const questions = parseQuiz(content);
+  const questions = useMemo(() => parseQuiz(content), [content]);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
 
   if (questions.length === 0) {
     return (
       <div className="doc-view">
-        <pre className="whitespace-pre-wrap text-sm">{content}</pre>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
       </div>
     );
   }
 
+  const total = questions.filter((question) => question.answerIndex >= 0).length;
   const score = questions.filter(
-    (q, i) => q.answerIndex >= 0 && answers[i] === q.answerIndex,
+    (question, index) => question.answerIndex >= 0 && answers[index] === question.answerIndex,
   ).length;
-  const total = questions.filter((q) => q.answerIndex >= 0).length;
+  const percent = total > 0 ? Math.round((score / total) * 100) : 0;
 
   return (
     <div className="space-y-4">
@@ -105,20 +115,25 @@ export function QuizDetail({ content, topic }: { content: string; topic: string 
           <span className="text-lg font-bold text-blue-700">
             得分：{score}/{total}
           </span>
-          <span className="ml-2 text-sm text-slate-500">
-            （{Math.round((score / total) * 100)} 分）
-          </span>
+          <span className="ml-2 text-sm text-slate-500">({percent} 分)</span>
         </div>
       )}
 
-      {questions.map((q, qi) => {
-        const userAnswer = answers[qi];
-        const isCorrect = submitted && q.answerIndex >= 0 && userAnswer === q.answerIndex;
-        const isWrong = submitted && q.answerIndex >= 0 && userAnswer !== undefined && userAnswer !== q.answerIndex;
+      {questions.map((question, questionIndex) => {
+        const userAnswer = answers[questionIndex];
+        const isCorrect =
+          submitted &&
+          question.answerIndex >= 0 &&
+          userAnswer === question.answerIndex;
+        const isWrong =
+          submitted &&
+          question.answerIndex >= 0 &&
+          userAnswer !== undefined &&
+          userAnswer !== question.answerIndex;
 
         return (
-          <div
-            key={qi}
+          <article
+            key={questionIndex}
             className={`rounded-xl border p-4 ${
               isCorrect
                 ? "border-emerald-200 bg-emerald-50/30"
@@ -127,24 +142,29 @@ export function QuizDetail({ content, topic }: { content: string; topic: string 
                   : "border-slate-200"
             }`}
           >
-            <p className="mb-3 text-sm font-medium text-slate-800">
-              第 {qi + 1} 题
+            <p className="mb-2 text-sm font-semibold text-slate-800">
+              第 {questionIndex + 1} 题
             </p>
-            <p className="mb-3 text-sm text-slate-700">{q.prompt}</p>
+            <p className="mb-3 text-sm leading-6 text-slate-700">{question.prompt}</p>
 
-            {q.options.length > 0 ? (
+            {question.options.length > 0 ? (
               <div className="space-y-2">
-                {q.options.map((opt, oi) => {
-                  const selected = userAnswer === oi;
-                  const showCorrect = submitted && oi === q.answerIndex;
-                  const showWrong = submitted && selected && oi !== q.answerIndex;
+                {question.options.map((option, optionIndex) => {
+                  const selected = userAnswer === optionIndex;
+                  const showCorrect = submitted && optionIndex === question.answerIndex;
+                  const showWrong = submitted && selected && optionIndex !== question.answerIndex;
 
                   return (
                     <button
-                      key={oi}
+                      key={optionIndex}
                       type="button"
                       disabled={submitted}
-                      onClick={() => setAnswers((a) => ({ ...a, [qi]: oi }))}
+                      onClick={() =>
+                        setAnswers((current) => ({
+                          ...current,
+                          [questionIndex]: optionIndex,
+                        }))
+                      }
                       className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
                         showCorrect
                           ? "border-emerald-400 bg-emerald-50 text-emerald-800"
@@ -156,11 +176,11 @@ export function QuizDetail({ content, topic }: { content: string; topic: string 
                       }`}
                     >
                       <span className="font-mono font-bold">
-                        {String.fromCharCode(65 + oi)}.
+                        {String.fromCharCode(65 + optionIndex)}.
                       </span>
-                      <span>{opt}</span>
-                      {showCorrect && <span className="ml-auto">✓</span>}
-                      {showWrong && <span className="ml-auto">✕</span>}
+                      <span>{option}</span>
+                      {showCorrect && <span className="ml-auto font-medium">正确</span>}
+                      {showWrong && <span className="ml-auto font-medium">错误</span>}
                     </button>
                   );
                 })}
@@ -168,17 +188,17 @@ export function QuizDetail({ content, topic }: { content: string; topic: string 
             ) : (
               <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
                 <p className="font-medium">参考答案：</p>
-                <p className="mt-1">{q.answerText || "（见解析）"}</p>
+                <p className="mt-1">{question.answerText || "见解析"}</p>
               </div>
             )}
 
-            {submitted && q.explanation && (
-              <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                <span className="font-medium">💡 解析：</span>
-                {q.explanation}
+            {submitted && question.explanation && (
+              <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                <span className="font-medium">解析：</span>
+                {question.explanation}
               </div>
             )}
-          </div>
+          </article>
         );
       })}
 
@@ -187,11 +207,7 @@ export function QuizDetail({ content, topic }: { content: string; topic: string 
           type="button"
           onClick={() => {
             setSubmitted(true);
-            const sc = questions.filter(
-              (q, i) => q.answerIndex >= 0 && answers[i] === q.answerIndex,
-            ).length;
-            const pct = total > 0 ? Math.round((sc / total) * 100) : 0;
-            useLearningStore.getState().setMastery(topic, pct);
+            useLearningStore.getState().setMastery(topic, percent);
           }}
           className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
         >

@@ -12,7 +12,6 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const { id } = await params;
-
   const conv = await prisma.tutorConversation.findFirst({
     where: { id, userId: user.id },
     include: {
@@ -20,7 +19,7 @@ export async function GET(
     },
   });
 
-  if (!conv) return NextResponse.json({ error: "不存在" }, { status: 404 });
+  if (!conv) return NextResponse.json({ error: "对话不存在" }, { status: 404 });
 
   return NextResponse.json({
     conversation: {
@@ -33,4 +32,23 @@ export async function GET(
       })),
     },
   });
+}
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "未登录" }, { status: 401 });
+
+  const { id } = await params;
+  const conv = await prisma.tutorConversation.findFirst({
+    where: { id, userId: user.id },
+    select: { id: true },
+  });
+
+  if (!conv) return NextResponse.json({ error: "对话不存在" }, { status: 404 });
+
+  await prisma.tutorConversation.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }

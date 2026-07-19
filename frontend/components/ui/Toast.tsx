@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 interface ToastItem {
   id: number;
@@ -21,9 +21,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToastCb = useCallback((message: string, type: ToastItem["type"] = "info") => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, message, type }]);
+    setToasts((items) => [...items, { id, message, type }]);
     setTimeout(() => {
-      setToasts((t) => t.filter((x) => x.id !== id));
+      setToasts((items) => items.filter((item) => item.id !== id));
     }, 4000);
   }, []);
 
@@ -37,23 +37,29 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((t) => (
+      <div className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col gap-2">
+        {toasts.map((toast) => (
           <div
-            key={t.id}
+            key={toast.id}
             className={`animate-[slideIn_0.2s_ease-out] rounded-lg px-4 py-2.5 text-sm shadow-lg ${
-              t.type === "error"
+              toast.type === "error"
                 ? "bg-rose-600 text-white"
-                : t.type === "success"
+                : toast.type === "success"
                   ? "bg-emerald-600 text-white"
                   : "bg-slate-800 text-white"
             }`}
           >
-            {t.type === "error" ? "✕ " : t.type === "success" ? "✓ " : ""}
-            {t.message}
+            <span className="mr-1 font-semibold">{labelForType(toast.type)}：</span>
+            <span>{toast.message}</span>
           </div>
         ))}
       </div>
     </>
   );
+}
+
+function labelForType(type: ToastItem["type"]): string {
+  if (type === "success") return "成功";
+  if (type === "error") return "错误";
+  return "提示";
 }

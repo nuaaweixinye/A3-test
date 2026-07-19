@@ -30,15 +30,17 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const { title, messages } = await request.json();
+  const safeMessages = Array.isArray(messages) ? messages : [];
 
   const conv = await prisma.tutorConversation.create({
     data: {
       userId: user.id,
-      title: title || "新对话",
+      title: String(title || "新对话").slice(0, 60),
       messages: {
-        create: (messages as Array<{ role: string; content: string }>).map(
-          (m) => ({ role: m.role, content: m.content }),
-        ),
+        create: safeMessages.map((m: { role?: string; content?: string }) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: String(m.content || ""),
+        })),
       },
     },
   });

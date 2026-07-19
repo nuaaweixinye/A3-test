@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { streamTextSse } from "@/frontend/lib/sse-client";
 import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
@@ -22,8 +22,8 @@ interface ConvSummary {
 }
 
 const SUGGESTIONS = [
-  "二分查找在什么情况下不能使用？",
-  "快速排序为什么最坏是 O(n²)？怎么优化？",
+  "二分查找在什么情况下不适用？",
+  "快速排序为什么最坏是 O(n^2)，怎么优化？",
   "递归和迭代分别适合什么场景？",
 ];
 
@@ -36,6 +36,11 @@ export default function TutorPage() {
   const [conversations, setConversations] = useState<ConvSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void refreshConversations();
+  }, []);
 
   async function refreshConversations() {
     try {
@@ -43,31 +48,14 @@ export default function TutorPage() {
       const data = await res.json();
       setConversations((data.conversations as ConvSummary[]) || []);
     } catch {
+      setConversations([]);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/tutor/conversations")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) {
-          setConversations((data.conversations as ConvSummary[]) || []);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   async function loadConversation(id: string) {
-    if (running) return;
+    if (running || deletingId) return;
     try {
       const res = await fetch(`/api/tutor/conversations/${id}`);
       if (!res.ok) return;
@@ -86,6 +74,7 @@ export default function TutorPage() {
       );
       setError(null);
     } catch {
+      setError("加载对话失败，请稍后重试。");
     }
   }
 
@@ -96,9 +85,29 @@ export default function TutorPage() {
     setInput("");
   }
 
+  async function deleteConversation(id: string) {
+    if (running || deletingId) return;
+    setDeletingId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/tutor/conversations/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "删除对话失败");
+
+      setConversations((items) => items.filter((item) => item.id !== id));
+      if (selectedId === id) newChat();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "删除对话失败");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   async function saveConversation(question: string, answer: string) {
     try {
-      await fetch("/api/tutor/conversations", {
+      const res = await fetch("/api/tutor/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -109,8 +118,11 @@ export default function TutorPage() {
           ],
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (data.id) setSelectedId(data.id);
       await refreshConversations();
     } catch {
+      // 辅导回答已展示，保存失败不阻断当前学习。
     }
   }
 
@@ -156,68 +168,85 @@ export default function TutorPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">智能辅导</h1>
           <p className="text-sm text-slate-500">
-            基于知识库的多轮答疑 · 结合画像个性化 · 可朗读
+            基于知识库的多轮答疑 · 结合学习画像个性化解释 · 支持朗读
           </p>
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
-          {profile ? `当前画像：${profile.cognitive_style} · ${profile.learning_pace}` : "未构建画像"}
+          {profile
+            ? `当前画像：${profile.cognitive_style} · ${profile.learning_pace}`
+            : "未构建画像"}
         </span>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="h-fit space-y-2">
           <button
             type="button"
             onClick={newChat}
             className="w-full rounded-xl bg-violet-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-violet-700"
           >
-            + 新建对话
+            新建对话
           </button>
           <div className="mb-1 px-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
             历史对话
           </div>
           {loading ? (
-            <p className="px-1 py-4 text-center text-xs text-slate-400">加载中…</p>
+            <p className="px-1 py-4 text-center text-xs text-slate-400">加载中...</p>
           ) : conversations.length === 0 ? (
             <p className="px-1 py-4 text-center text-xs text-slate-400">暂无对话</p>
           ) : (
             conversations.map((c) => (
-              <button
+              <div
                 key={c.id}
-                type="button"
-                onClick={() => loadConversation(c.id)}
-                className={`flex w-full flex-col rounded-xl border px-3 py-2.5 text-left transition ${
+                className={`group flex items-center gap-2 rounded-xl border p-2 transition ${
                   selectedId === c.id
                     ? "border-violet-300 bg-violet-50"
                     : "border-slate-200 bg-white hover:border-slate-300"
                 }`}
               >
-                <span className="truncate text-sm font-medium text-slate-700">
-                  {c.title}
-                </span>
-                <span className="mt-0.5 text-xs text-slate-400">
-                  {formatDate(c.updatedAt)} · {c.messageCount} 条
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => loadConversation(c.id)}
+                  className="min-w-0 flex-1 text-left"
+                  disabled={deletingId === c.id}
+                >
+                  <span className="block truncate text-sm font-medium text-slate-700">
+                    {c.title}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-400">
+                    {formatDate(c.updatedAt)} · {c.messageCount} 条
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteConversation(c.id)}
+                  disabled={deletingId === c.id || running}
+                  className="rounded-lg px-2 py-1 text-xs text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  title="删除对话"
+                >
+                  {deletingId === c.id ? "删除中" : "删除"}
+                </button>
+              </div>
             ))
           )}
         </aside>
 
         <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex-1 space-y-4 overflow-y-auto p-5 max-h-[56vh] min-h-[300px]">
+          <div className="max-h-[56vh] min-h-[300px] flex-1 space-y-4 overflow-y-auto p-5">
             {messages.length === 0 && (
               <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
                 <p className="text-slate-500">
-                  遇到不理解的知识点？直接提问，辅导智能体将基于课程知识库作答。
+                  遇到不理解的知识点可以直接提问，辅导智能体会结合知识库、学习画像和上下文作答。
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   {SUGGESTIONS.map((s) => (
                     <button
                       key={s}
+                      type="button"
                       onClick={() => ask(s)}
                       className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-600 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
                     >
@@ -260,14 +289,14 @@ export default function TutorPage() {
 
           {error && (
             <div className="border-t border-slate-100 px-5 py-2 text-xs text-red-600">
-              ✕ {error}
+              错误：{error}
             </div>
           )}
 
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              ask(input);
+              void ask(input);
             }}
             className="flex gap-2 border-t border-slate-100 p-3"
           >
@@ -282,7 +311,7 @@ export default function TutorPage() {
               disabled={running || !input.trim()}
               className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {running ? "作答中…" : "提问"}
+              {running ? "作答中..." : "提问"}
             </button>
           </form>
         </div>
@@ -309,7 +338,7 @@ function Dot() {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) return "";
   const month = d.getMonth() + 1;
   const day = d.getDate();
   const hh = String(d.getHours()).padStart(2, "0");

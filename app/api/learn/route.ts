@@ -1,14 +1,7 @@
-// SSE 流式接口：对话 → 画像 → 路径 → 6 个资源 Agent 并行生成 闭环
-// 前端 POST { message } → 本路由流式返回事件：
-//   status | profile | path | resource_start | resource_delta | resource | done | error
-//
-// 资源相关事件由各资源节点通过注入的 emit 回调直接推送；
-// profile/path 仍由 graph.stream 的 updates 翻译得到。
-
 import { runLearningLoop } from "@/backend/graph";
-import type { AgentEvent, StudentProfile, LearningPath } from "@/backend/types";
-import { isMockMode } from "@/backend/ai/spark";
+import { sparkMode } from "@/backend/ai/spark";
 import type { Emitter } from "@/backend/agents/resource-runner";
+import type { AgentEvent, LearningPath, StudentProfile } from "@/backend/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,14 +14,24 @@ function sse(event: AgentEvent): Uint8Array {
   );
 }
 
+function currentModeLabel(): string {
+  const labels = {
+    "spark-ws": "spark X1/X2 WebSocket",
+    "spark-http": "spark HTTP 兼容接口",
+    unconfigured: "未配置真实模型接口",
+  } as const;
+  return labels[sparkMode()];
+}
+
 export async function POST(req: Request) {
   let message = "";
   try {
     const body = await req.json();
     message = String(body?.message ?? "").trim();
   } catch {
-    /* 非法 JSON，message 保持空 */
+    // Invalid JSON is handled by the missing-message branch below.
   }
+
   if (!message) {
     return new Response(JSON.stringify({ error: "缺少 message 字段" }), {
       status: 400,
@@ -36,16 +39,14 @@ export async function POST(req: Request) {
     });
   }
 
-  const mode = isMockMode() ? "mock（未配置讯飞星火密钥）" : "spark";
-
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const emit: Emitter = (e) => controller.enqueue(sse(e));
+      const emit: Emitter = (event) => controller.enqueue(sse(event));
 
       emit({
         type: "status",
         agent: "system",
-        message: `多智能体闭环已启动（模式：${mode}）`,
+        message: `多智能体闭环已启动（模式：${currentModeLabel()}）`,
       });
 
       try {
@@ -55,7 +56,6 @@ export async function POST(req: Request) {
         );
 
         for await (const chunk of graphStream) {
-          // streamMode=updates：每个 yield 形如 { 节点名: 该节点返回的状态增量 }
           const update = chunk as Record<string, Record<string, unknown>>;
           for (const [node, delta] of Object.entries(update)) {
             if (!delta) continue;
@@ -64,9 +64,9 @@ export async function POST(req: Request) {
             } else if (node === "path_planner" && delta.path) {
               emit({ type: "path", path: delta.path as LearningPath });
             }
-            // 资源节点(*_gen)的事件已由 emit 直接推送，此处无需重复处理
           }
         }
+
         emit({ type: "done" });
       } catch (err) {
         emit({

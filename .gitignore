@@ -19,6 +19,10 @@
 
 # production
 /build
+/dist
+/.packager
+.next-dev.stdout.log
+.next-dev.stderr.log
 
 # misc
 .DS_Store
@@ -45,3 +49,9 @@ next-env.d.ts
 # prisma
 prisma/dev.db
 prisma/*.db-journal
+
+# generated media
+public/generated-videos/
+public/generated-ppts/
+.video-tmp/
+.playwright-cli/

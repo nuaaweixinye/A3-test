@@ -1,26 +1,26 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes. Read the relevant guide in `node_modules/next/dist/docs/` before writing code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# Project: 智学多智能体 (A3 软件杯)
+# Project: 智学多智能体
 
 ## Commands
 - Dev: `npm run dev` (Turbopack, port 3000)
-- Build: `npm run build` (produces `.next/standalone` via `output:"standalone"`)
-- Run standalone (no Docker): `node .next/standalone/server.js` (set `PORT`)
-- Lint: `npm run lint` (ESLint flat config; `next lint` is removed in Next 16)
+- Build: `npm run build` (standalone output enabled)
+- Run standalone: `node .next/standalone/server.js` (set `PORT` when needed)
+- Lint: `npm run lint`
 - Typecheck: `npx tsc --noEmit`
-- Docker: `docker compose up --build` (port 3000; env `SPARK_API_KEY` optional)
+- Package Windows: `npm run package:win`
+- Docker: `docker compose up --build` (requires real Spark credentials)
 
-## Key conventions
-- Single-language Next.js full-stack app (no separate Python backend). Code is split: `backend/` (agents, graph, AI, knowledge, types) + `frontend/` (components, store, sse-client) + `app/` (Next.js routes, thin shell).
-- Multi-agent orchestration via **LangGraph.js** in `backend/graph.ts`. Node names must NOT collide with state channel names (e.g. don't name a node `profile` when a channel is `profile`) — LangGraph throws at compile time.
-- LLM = 科大讯飞星火 via OpenAI-compatible endpoint. When `SPARK_API_KEY` is unset, `backend/ai/spark.ts` runs in **mock mode** so the UI works without keys.
-- Streaming = raw `ReadableStream` SSE in `app/api/{learn,tutor}/route.ts` (not AI SDK). Event protocol types: `backend/types/index.ts` (`AgentEvent` for learn; `streamTextSse` delta/done for tutor).
-- Reading files at runtime (e.g. `backend/backend/knowledge_base/*.md`) is OK — route handlers run on Node.js runtime. Dockerfile manually copies `backend/backend/knowledge_base/` into standalone output.
-- Anti-hallucination = 4 layers; layer 3 fact-check lives in `backend/knowledge/fact-check.ts`, attached to `GeneratedResource.fact_check` by `backend/agents/resource-runner.ts`.
-- Docs in `docs/` (系统开发说明书 / 测试说明书 / 开源标注与AI工具说明 / 架构与流程图).
-- Import paths: `@/backend/*` for server code, `@/frontend/*` for client code (both resolve via `@/*` → root in tsconfig).
-
+## Key Conventions
+- Full-stack Next.js app. Server logic lives in `backend/`, client components and store live in `frontend/`, and routes live in `app/`.
+- Multi-agent orchestration uses LangGraph.js in `backend/graph.ts`.
+- LLM calls use 科大讯飞星火 X1/X2 WebSocket first, with OpenAI-compatible HTTP as fallback when explicitly configured.
+- Missing model credentials fail fast. The app only uses real model generation.
+- Resource generation uses RAG context, AI supplement when the knowledge base is incomplete, fact checking, and cross-agent review.
+- Generated MP4 files are written to `public/generated-videos/`.
+- Generated PPT files are written to `public/generated-ppts/`.
+- Import paths use `@/backend/*` and `@/frontend/*`.

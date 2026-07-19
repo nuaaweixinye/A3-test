@@ -130,10 +130,15 @@ export const useLearningStore = create<LearningStore>((set) => ({
   onResourceStart: ({ id, resType, title, topic }) =>
     set((s) => {
       if (s.resourceCards[id]) return s;
+      const duplicateId = s.resourceOrder.find(
+        (resourceId) => s.resourceCards[resourceId]?.resType === resType,
+      );
+      const nextCards = { ...s.resourceCards };
+      if (duplicateId) delete nextCards[duplicateId];
       return {
-        resourceOrder: [...s.resourceOrder, id],
+        resourceOrder: [...s.resourceOrder.filter((item) => item !== duplicateId), id],
         resourceCards: {
-          ...s.resourceCards,
+          ...nextCards,
           [id]: { id, resType, title, topic, content: "", sources: [], done: false },
         },
       };
@@ -154,15 +159,22 @@ export const useLearningStore = create<LearningStore>((set) => ({
   upsertResource: (r) =>
     set((s) => {
       const existing = s.resourceCards[r.id];
+      const duplicateId = s.resourceOrder.find(
+        (resourceId) =>
+          resourceId !== r.id && s.resourceCards[resourceId]?.resType === r.type,
+      );
+      const nextCards = { ...s.resourceCards };
+      if (duplicateId) delete nextCards[duplicateId];
       return {
         resourceCards: {
-          ...s.resourceCards,
+          ...nextCards,
           [r.id]: existing
             ? {
                 ...existing,
                 content: r.content || existing.content,
                 sources: r.sources,
                 fact_check: r.fact_check,
+                crossCheck: r.crossCheck,
                 done: true,
               }
             : {
@@ -173,12 +185,13 @@ export const useLearningStore = create<LearningStore>((set) => ({
                 content: r.content,
                 sources: r.sources,
                 fact_check: r.fact_check,
+                crossCheck: r.crossCheck,
                 done: true,
               },
         },
         resourceOrder: s.resourceOrder.includes(r.id)
-          ? s.resourceOrder
-          : [...s.resourceOrder, r.id],
+          ? s.resourceOrder.filter((item) => item !== duplicateId)
+          : [...s.resourceOrder.filter((item) => item !== duplicateId), r.id],
       };
     }),
 

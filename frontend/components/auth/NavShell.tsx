@@ -3,26 +3,27 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
 import { ToastProvider } from "@/frontend/components/ui/Toast";
-import { UserMenu } from "./UserMenu";
+import { UserMenu } from "@/frontend/components/auth/UserMenu";
+import { useLearningStore } from "@/frontend/lib/store/useLearningStore";
 
 const NAV_LINKS = [
-  { href: "/", label: "资源生成" },
+  { href: "/", label: "生成" },
+  { href: "/learn", label: "学习" },
   { href: "/profile", label: "画像" },
-  { href: "/learn", label: "学习记录" },
-  { href: "/tutor", label: "辅导" },
   { href: "/eval", label: "评估" },
+  { href: "/tutor", label: "辅导" },
   { href: "/knowledge", label: "知识库" },
+  { href: "/review", label: "复盘中心" },
 ];
 
 export function NavShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const setUser = useLearningStore((s) => s.setUser);
+  const setUser = useLearningStore((state) => state.setUser);
 
   useEffect(() => {
     fetch("/api/auth/me")
-      .then((res) => res.json())
+      .then((response) => response.json())
       .then(async (data) => {
         if (!data.user) return;
         setUser(data.user);
@@ -46,19 +47,15 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             if (recordsData.records?.length > 0) {
               const latest = recordsData.records[0];
               if (latest.path) useLearningStore.setState({ path: latest.path });
-              if (latest.progress)
-                useLearningStore.setState({ progress: latest.progress });
+              if (latest.progress) useLearningStore.setState({ progress: latest.progress });
               if (latest.resources) {
                 const cards: Record<string, typeof latest.resources[0]> = {};
                 const order: string[] = [];
-                for (const r of latest.resources) {
-                  cards[r.id] = { ...r, done: true };
-                  order.push(r.id);
+                for (const resource of latest.resources) {
+                  cards[resource.id] = { ...resource, done: true };
+                  order.push(resource.id);
                 }
-                useLearningStore.setState({
-                  resourceCards: cards,
-                  resourceOrder: order,
-                });
+                useLearningStore.setState({ resourceCards: cards, resourceOrder: order });
               }
             }
           } catch {}
@@ -73,16 +70,19 @@ export function NavShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="inline-block h-7 w-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600" />
-            <span>智学多智能体</span>
-            <span className="hidden text-xs font-normal text-slate-400 sm:inline">
-              个性化学习 · 多智能体协同
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+        <nav className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
+          <Link href="/" className="flex min-w-0 items-center gap-2 font-semibold">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-600 text-sm font-bold text-white">
+              AI
+            </span>
+            <span className="truncate">智学多智能体</span>
+            <span className="hidden text-xs font-normal text-slate-400 md:inline">
+              个性化学习工作台
             </span>
           </Link>
-          <div className="flex items-center gap-1 text-sm">
+
+          <div className="no-scrollbar ml-auto flex min-w-0 items-center gap-1 overflow-x-auto text-sm">
             {NAV_LINKS.map((link) => {
               const active =
                 pathname === link.href ||
@@ -91,7 +91,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`rounded-lg px-3 py-1.5 transition ${
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 transition ${
                     active
                       ? "bg-blue-50 font-medium text-blue-700"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -101,18 +101,19 @@ export function NavShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-            <div className="ml-2 border-l border-slate-200 pl-2">
-              <UserMenu />
-            </div>
+          </div>
+          <div className="ml-1 shrink-0 border-l border-slate-200 pl-2">
+            <UserMenu />
           </div>
         </nav>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 sm:py-6">
         {children}
       </main>
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-        多智能体协同框架：LangGraph.js · 大模型：科大讯飞星火 · 架构参考
-        THU-MAIC/OpenMAIC (MIT)
+
+      <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
+        LangGraph.js 多智能体协同 · 科大讯飞星火大模型 · 个性化学习闭环
       </footer>
     </ToastProvider>
   );

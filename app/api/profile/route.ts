@@ -17,12 +17,12 @@ export async function GET() {
   }
 
   const profile: StudentProfile = {
-    knowledge_level: JSON.parse(row.knowledgeLevel),
+    knowledge_level: safeJson(row.knowledgeLevel, {}),
     cognitive_style: row.cognitiveStyle as StudentProfile["cognitive_style"],
-    error_patterns: JSON.parse(row.errorPatterns),
+    error_patterns: safeJson(row.errorPatterns, []),
     learning_goal: row.learningGoal as StudentProfile["learning_goal"],
     learning_pace: row.learningPace as StudentProfile["learning_pace"],
-    interests: JSON.parse(row.interests),
+    interests: safeJson(row.interests, []),
     updated_at: row.updatedAt.toISOString(),
   };
 
@@ -59,4 +59,12 @@ export async function PUT(request: Request) {
   });
 
   return NextResponse.json({ ok: true });
+}
+
+function safeJson<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }
