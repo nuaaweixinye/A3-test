@@ -1,63 +1,80 @@
 # 开源标注与 AI 工具说明
 
-> 赛题要求：使用开源项目须标注名称、来源及协议；AI 辅助工具须选用科大讯飞相关工具；如使用 AI Coding 工具需给出说明。
-> 版本：v1.0　日期：2026-07
+> 赛题要求：使用开源项目须标注名称、来源及协议；AI 辅助工具须选用科大讯飞相关工具。
+> 版本：v2.0　日期：2026-07
 
 ---
 
 ## 1. 开源依赖标注
 
+### 核心框架
 | 项目 | 版本 | 来源 | 协议 | 用途 |
 | --- | --- | --- | --- | --- |
-| THU-MAIC/**OpenMAIC** | v0.3.0（架构参考） | https://github.com/THU-MAIC/OpenMAIC | MIT | 架构参考：多智能体编排、场景系统思路（本项目从零实现，未直接包含其代码） |
-| **@langchain/langgraph** | 1.4.7 | https://github.com/langchain-ai/langgraphjs | MIT | 多智能体状态图编排（StateGraph） |
-| @langchain/core | 1.2.1 | https://github.com/langchain-ai/langchainjs | MIT | LangChain 核心（被 langgraph 依赖） |
+| THU-MAIC/**OpenMAIC** | v0.3.0（架构参考） | https://github.com/THU-MAIC/OpenMAIC | MIT | 架构参考（从零实现，未含其代码） |
 | **Next.js** | 16.2.10 | https://github.com/vercel/next.js | MIT | 全栈应用框架（App Router） |
 | **React** | 19.2.4 | https://github.com/facebook/react | MIT | UI 库 |
+| **@langchain/langgraph** | 1.4.7 | https://github.com/langchain-ai/langgraphjs | MIT | 多智能体状态图编排 |
+| @langchain/core | 1.2.1 | https://github.com/langchain-ai/langchainjs | MIT | LangChain 核心 |
 | TypeScript | ^5 | https://github.com/microsoft/TypeScript | Apache-2.0 | 类型系统 |
-| **Tailwind CSS** | ^4 | https://github.com/tailwindlabs/tailwindcss | MIT | 原子化 CSS |
-| shadcn/ui 思路 | — | https://ui.shadcn.com | MIT | UI 组件组织方式参考（按需手写） |
-| **ECharts** | ^6 | https://github.com/apache/echarts | Apache-2.0 | 画像/评估数据可视化（雷达图） |
-| **Zustand** | ^5 | https://github.com/pmndrs/zustand | MIT | 前端状态管理 |
-| **react-markdown** | latest | https://github.com/remarkjs/react-markdown | MIT | 资源 Markdown 渲染 |
-| remark-gfm | latest | https://github.com/remarkjs/remark-gfm | MIT | GFM 表格/列表支持 |
-| nanoid | ^5 | https://github.com/ai/nanoid | MIT | 资源/消息 ID 生成 |
-| zod | ^3 | https://github.com/colinhacks/zod | MIT | 运行时校验 |
-| ESLint | ^9 | https://github.com/eslint/eslint | MIT | 代码规范（flat config） |
 
-> 均为成熟开源项目，许可证兼容，已在本文件显著位置标注。
+### 前端
+| 项目 | 版本 | 来源 | 协议 | 用途 |
+| --- | --- | --- | --- | --- |
+| **Tailwind CSS** | ^4 | https://github.com/tailwindlabs/tailwindcss | MIT | 原子化 CSS |
+| **ECharts** | ^6 | https://github.com/apache/echarts | Apache-2.0 | 雷达图/折线图/趋势图 |
+| echarts-for-react | ^3 | https://github.com/hustcc/echarts-for-react | MIT | ECharts React 封装 |
+| **Zustand** | ^5 | https://github.com/pmndrs/zustand | MIT | 前端状态管理 |
+| **react-markdown** | ^10 | https://github.com/remarkjs/react-markdown | MIT | Markdown 渲染 |
+| remark-gfm | ^4 | https://github.com/remarkjs/remark-gfm | MIT | GFM 表格/列表 |
+| **react-syntax-highlighter** | ^15 | https://github.com/react-syntax-highlighter/react-syntax-highlighter | MIT | 代码语法高亮 |
+| **markmap-view** + **markmap-lib** | latest | https://github.com/markmap/markmap | MIT | 思维导图 SVG 放射状可视化 |
+| **dompurify** | latest | https://github.com/cure53/DOMPurify | Apache-2.0/MPL-2.0 | SVG XSS 消毒 |
+
+### 后端/数据
+| 项目 | 版本 | 来源 | 协议 | 用途 |
+| --- | --- | --- | --- | --- |
+| **Prisma** + **@prisma/client** | ^6 | https://github.com/prisma/prisma | Apache-2.0 | ORM |
+| better-sqlite3 | (Prisma 内置) | https://github.com/WiseLibs/better-sqlite3 | MIT | SQLite 驱动 |
+| **bcryptjs** | ^2 | https://github.com/dcodeIO/bcrypt.js | Apache-2.0 | 密码哈希 |
+| **jose** | ^5 | https://github.com/panva/jose | MIT | JWT 签发/验证 |
+| nanoid | ^5 | https://github.com/ai/nanoid | MIT | ID 生成 |
+| ESLint | ^9 | https://github.com/eslint/eslint | MIT | 代码规范 |
+
+> 均为成熟开源项目，许可证兼容（MIT/Apache-2.0），已标注。
 
 ---
 
-## 2. 科大讯飞（出题企业）工具使用说明
-
-赛题硬性要求"AI 辅助工具须选用科大讯飞相关工具"。本项目使用情况：
+## 2. 科大讯飞工具使用说明
 
 ### 2.1 讯飞星火大模型（已接入）
-- **接入方式**：通过讯飞开放平台提供的 **OpenAI 兼容端点** `https://spark-api-open.xf-yun.com/v1/chat/completions`。
-- **鉴权**：`Authorization: Bearer <SPARK_API_KEY>`（控制台生成的接口密钥/APIPassword）。
-- **分阶段模型路由**（`backend/ai/spark.ts`）：画像抽取用 `lite`，资源生成/辅导用 `4.0Ultra`，评估用 `pro`，由 `MODEL_ROUTES` 环境变量配置。
-- **流式**：直接解析星火 SSE（`data: {chunk}` / `data: [DONE]`），逐 token 推送到前端。
-- **配置位置**：`.env` 的 `SPARK_API_KEY`（见 `.env.example`）。
+- **端点**：OpenAI 兼容 `https://spark-api-open.xf-yun.com/v1/chat/completions`
+- **鉴权**：`Authorization: Bearer <SPARK_API_KEY>`
+- **模型路由**：画像用 `generalv3.5`，资源生成/辅导/评估用 `4.0Ultra`
+- **流式**：解析星火 SSE，逐 token 推送前端
+- **配置**：`.env` 的 `SPARK_API_KEY`
 
-### 2.2 讯飞 TTS（预留，待接入）
-- 视频/辅导当前使用**浏览器 Web Speech API** 作为占位配音。
-- 已在 `spark.ts` 与文档中预留 `TTS_SPARK_*` 配置位；获得 TTS 密钥后替换 `SpeakButton` 实现即可切换为讯飞语音合成（满足赛题对讯飞工具的要求）。
+### 2.2 讯飞 ChatDoc 知识库（已接入）
+- **功能**：云端语义检索 + 事实核查
+- **鉴权**：HMAC-SHA1 签名（`backend/knowledge/spark-auth.ts`）
+- **检索**：`search(query, topK)` → 语义检索最相关文档片段
+- **核查**：`factCheck(content, topic)` → 交叉验证事实声明
+- **管理**：`uploadFile()` / `listFiles()` — 前端 `/knowledge` 页面可视化操作
+- **配置**：`.env` 的 `SPARK_APP_ID` / `SPARK_API_SECRET` / `SPARK_KB_REPO_ID`
 
 ### 2.3 mock 兜底
-- 未配置 `SPARK_API_KEY` 时，系统自动进入 **mock 模式**，按各资源类型/画像/路径/辅导/评估输出结构化占位内容，保障无密钥环境下亦可端到端演示与测试。
+未配置密钥时，系统自动进入 mock 模式，输出结构化占位内容。
 
 ---
 
 ## 3. AI Coding 工具使用说明
 
-- 本项目开发过程中使用了 **AI 编程辅助工具**（基于大模型的命令行编程助手）辅助：脚手架搭建、代码生成、重构、调试与文档撰写。
-- 所有 AI 生成代码均经人工审阅、类型检查（`tsc`）、代码规范检查（`eslint`）与运行时验证（见《测试说明书.md》）后纳入。
-- 运行时的大模型能力（画像/资源/辅导/评估生成）由**科大讯飞星火**提供，与开发期的 AI Coding 工具相互独立。
+- 开发过程使用了 **AI 编程辅助工具**（基于大模型的命令行编程助手），辅助脚手架搭建、代码生成、重构、调试与文档撰写。
+- 所有 AI 生成代码均经人工审阅、`tsc` 类型检查、`eslint` 规范检查与运行时验证后纳入。
+- 运行时的大模型能力由**科大讯飞星火**提供，与开发期 AI Coding 工具相互独立。
 
 ---
 
 ## 4. 合规声明
 - 全部依赖均为开源且按协议（MIT/Apache-2.0）使用，已标注来源；
-- 大模型推理调用科大讯飞星火；
+- 大模型推理 + 知识库 RAG + 事实核查均调用科大讯飞服务；
 - 无任何闭源/受限组件。
